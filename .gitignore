@@ -1,3 +1,36 @@
 # Claude Code local files
 .claude/
 .claude/**
+
+# Tech spec (local reference only)
+MERIDIAN_TECH_SPEC_v2.md
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+target/
+.next/
+out/
+dist/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Solana
+test-ledger/
+.anchor/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
