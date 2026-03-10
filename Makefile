@@ -1,4 +1,4 @@
-.PHONY: install build build-program build-frontend test test-contract test-automation test-frontend test-integration lint format clean deploy-devnet demo
+.PHONY: install build build-program build-frontend test test-contract test-automation test-frontend test-integration lint format clean deploy-devnet demo deploy setup-devnet
 
 install:
 	npm install
@@ -41,4 +41,10 @@ deploy-devnet:
 	anchor deploy --provider.cluster devnet
 
 demo:
-	@echo "Demo mode - coming in Phase 4"
+	npx ts-node scripts/demo.ts
+
+deploy:
+	npx ts-node scripts/deploy.ts
+
+setup-devnet:
+	npx ts-node scripts/setup-devnet.ts
