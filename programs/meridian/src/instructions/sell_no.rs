@@ -5,7 +5,7 @@ use crate::adapters::orderbook::{OrderParams, OrderSide, OrderType};
 use crate::adapters::phoenix::PhoenixLegacyAdapter;
 use crate::constants::*;
 use crate::errors::MeridianError;
-use crate::state::{MeridianConfig, StrikeMarket};
+use crate::state::StrikeMarket;
 
 /// Composite instruction: buy Yes on Phoenix at market, then redeem
 /// the Yes + No pair for 1 USDC.
@@ -17,8 +17,7 @@ use crate::state::{MeridianConfig, StrikeMarket};
 pub fn handler(ctx: Context<SellNo>, amount: u64) -> Result<()> {
     require!(amount > 0, MeridianError::ZeroAmount);
 
-    let config = &ctx.accounts.config;
-    require!(!config.paused, MeridianError::ProgramPaused);
+    // No pause check: users must always be able to exit positions.
 
     let market = &ctx.accounts.strike_market;
     require!(!market.settled, MeridianError::MarketAlreadySettled);
@@ -118,13 +117,6 @@ pub struct SellNo<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
-    /// Global config (for pause check).
-    #[account(
-        seeds = [CONFIG_SEED],
-        bump = config.bump,
-    )]
-    pub config: Account<'info, MeridianConfig>,
-
     /// The strike market.
     #[account(
         mut,
@@ -163,11 +155,18 @@ pub struct SellNo<'info> {
     pub user_no: Account<'info, TokenAccount>,
 
     /// PDA-owned YES token account (receives Yes from Phoenix).
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = yes_mint,
+        token::authority = strike_market,
+    )]
     pub pda_yes_account: Account<'info, TokenAccount>,
 
     /// PDA-owned quote token account (sends quote to Phoenix).
-    #[account(mut)]
+    #[account(
+        mut,
+        token::authority = strike_market,
+    )]
     pub pda_quote_account: Account<'info, TokenAccount>,
 
     /// Market's USDC vault.

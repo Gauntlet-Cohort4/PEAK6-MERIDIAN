@@ -7,7 +7,11 @@ use crate::events::PairMinted;
 use crate::state::{MeridianConfig, StrikeMarket};
 
 /// Mints one Yes + one No token pair per USDC deposited.
-/// User sends `amount` USDC into the vault and receives `amount` of each token.
+///
+/// `amount` is the number of **pairs** to mint, NOT the USDC amount.
+/// Each pair costs 1 USDC (1_000_000 base units / PAIR_COST_LAMPORTS).
+/// The user deposits `amount * PAIR_COST_LAMPORTS` USDC and receives
+/// `amount` YES tokens + `amount` NO tokens.
 pub fn handler(ctx: Context<MintPair>, amount: u64) -> Result<()> {
     require!(amount > 0, MeridianError::ZeroAmount);
 

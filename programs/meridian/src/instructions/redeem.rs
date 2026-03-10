@@ -161,8 +161,11 @@ pub struct Redeem<'info> {
     )]
     pub user_no: Account<'info, TokenAccount>,
 
-    /// User's USDC token account (for payout).
-    #[account(mut)]
+    /// User's USDC token account (for payout). Must match vault mint.
+    #[account(
+        mut,
+        constraint = user_usdc.mint == vault.mint @ MeridianError::InvalidTokenAccount,
+    )]
     pub user_usdc: Account<'info, TokenAccount>,
 
     /// Market's USDC vault.

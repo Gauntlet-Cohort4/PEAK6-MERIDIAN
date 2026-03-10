@@ -21,6 +21,12 @@ pub fn handler(
     let ticker_config = &ctx.accounts.ticker_config;
     require!(ticker_config.active, MeridianError::TickerNotActive);
 
+    let clock = Clock::get()?;
+    require!(
+        trading_date >= clock.unix_timestamp,
+        MeridianError::TradingDatePast
+    );
+
     let market = &mut ctx.accounts.strike_market;
     market.ticker = ticker_config.symbol.clone();
     market.strike_price = strike_price;

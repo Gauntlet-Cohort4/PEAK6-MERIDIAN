@@ -171,11 +171,18 @@ pub struct BuyNoMarket<'info> {
     pub user_no: Account<'info, TokenAccount>,
 
     /// PDA-owned YES token account (for Phoenix selling).
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = yes_mint,
+        token::authority = strike_market,
+    )]
     pub pda_yes_account: Account<'info, TokenAccount>,
 
     /// PDA-owned quote token account (receives USDC from Phoenix trade).
-    #[account(mut)]
+    #[account(
+        mut,
+        token::authority = strike_market,
+    )]
     pub pda_quote_account: Account<'info, TokenAccount>,
 
     /// Market's USDC vault.
