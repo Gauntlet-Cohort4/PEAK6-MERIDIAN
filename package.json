@@ -1,0 +1,30 @@
+{
+  "name": "meridian",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Solana binary options prediction market",
+  "workspaces": [
+    "shared",
+    "automation",
+    "app"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write '**/*.{ts,tsx,json,md}'",
+    "format:check": "prettier --check '**/*.{ts,tsx,json,md}'",
+    "test": "npm run test --workspaces --if-present",
+    "test:shared": "npm run test --workspace=shared",
+    "clean": "rm -rf node_modules shared/node_modules automation/node_modules app/node_modules"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

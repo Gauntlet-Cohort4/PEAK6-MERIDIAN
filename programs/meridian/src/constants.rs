@@ -1,0 +1,6 @@
+pub const STALENESS_THRESHOLD: i64 = 300;
+pub const CONFIDENCE_THRESHOLD_BPS: u64 = 100;
+pub const ADMIN_SETTLE_DELAY: i64 = 3600;
+pub const PAIR_COST_LAMPORTS: u64 = 1_000_000;
+pub const USDC_DECIMALS: u8 = 6;
+pub const OUTCOME_TOKEN_DECIMALS: u8 = 6;
