@@ -84,6 +84,15 @@ pub fn handler(ctx: Context<Redeem>, amount: u64, redeem_yes: bool) -> Result<()
         0
     };
 
+    // Track pair redemptions so the vault invariant holds.
+    if is_winning {
+        let market_mut = &mut ctx.accounts.strike_market;
+        market_mut.total_pairs_redeemed = market_mut
+            .total_pairs_redeemed
+            .checked_add(amount)
+            .ok_or(MeridianError::ArithmeticOverflow)?;
+    }
+
     let token_type = if redeem_yes {
         "YES".to_string()
     } else {
@@ -107,8 +116,9 @@ pub struct Redeem<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
-    /// The settled strike market.
+    /// The settled strike market (mutable to track redemptions).
     #[account(
+        mut,
         seeds = [
             MARKET_SEED,
             strike_market.ticker.as_bytes(),

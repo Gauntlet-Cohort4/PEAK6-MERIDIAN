@@ -36,6 +36,7 @@ pub fn handler(
     market.vault = ctx.accounts.vault.key();
     market.phoenix_market = ctx.accounts.phoenix_market.key();
     market.total_pairs_minted = 0;
+    market.total_pairs_redeemed = 0;
     market.settled = false;
     market.outcome_yes_wins = false;
     market.settlement_price = 0;

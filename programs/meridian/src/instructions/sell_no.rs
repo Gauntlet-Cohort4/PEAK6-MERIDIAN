@@ -100,6 +100,14 @@ pub fn handler(ctx: Context<SellNo>, amount: u64) -> Result<()> {
         usdc_amount,
     )?;
 
+    // Track pair redemptions so the vault invariant holds:
+    // vault_balance = (total_pairs_minted - total_pairs_redeemed) * PAIR_COST_LAMPORTS
+    let market_mut = &mut ctx.accounts.strike_market;
+    market_mut.total_pairs_redeemed = market_mut
+        .total_pairs_redeemed
+        .checked_add(amount)
+        .ok_or(MeridianError::ArithmeticOverflow)?;
+
     Ok(())
 }
 

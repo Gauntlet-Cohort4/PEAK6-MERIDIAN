@@ -75,6 +75,10 @@ pub struct StrikeMarket {
     /// Total number of Yes/No token pairs minted.
     pub total_pairs_minted: u64,
 
+    /// Total number of Yes/No token pairs redeemed (burned for USDC).
+    /// Vault invariant: vault_balance = (total_pairs_minted - total_pairs_redeemed) * PAIR_COST_LAMPORTS
+    pub total_pairs_redeemed: u64,
+
     /// Whether this market has been settled.
     pub settled: bool,
 
@@ -89,8 +93,23 @@ pub struct StrikeMarket {
 }
 
 impl StrikeMarket {
-    /// Discriminator (8) + String prefix (4) + max chars (10) +
-    /// u64 (8) + i64 (8) + Pubkey*4 (128) + u64 (8) +
-    /// bool (1) + bool (1) + u64 (8) + u8 (1)
-    pub const SIZE: usize = 8 + 4 + MAX_SYMBOL_LEN + 8 + 8 + 128 + 8 + 1 + 1 + 8 + 1;
+    /// Account size breakdown:
+    ///   8  - Anchor discriminator
+    ///   4  - String length prefix (ticker)
+    ///  10  - ticker max chars (MAX_SYMBOL_LEN)
+    ///   8  - strike_price (u64)
+    ///   8  - trading_date (i64)
+    ///  32  - yes_mint (Pubkey)
+    ///  32  - no_mint (Pubkey)
+    ///  32  - vault (Pubkey)
+    ///  32  - phoenix_market (Pubkey)
+    ///   8  - total_pairs_minted (u64)
+    ///   8  - total_pairs_redeemed (u64)
+    ///   1  - settled (bool)
+    ///   1  - outcome_yes_wins (bool)
+    ///   8  - settlement_price (u64)
+    ///   1  - bump (u8)
+    /// ----
+    /// 193 total
+    pub const SIZE: usize = 8 + 4 + MAX_SYMBOL_LEN + 8 + 8 + 128 + 8 + 8 + 1 + 1 + 8 + 1;
 }
