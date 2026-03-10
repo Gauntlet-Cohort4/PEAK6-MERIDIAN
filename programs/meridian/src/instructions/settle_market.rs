@@ -7,7 +7,8 @@ use crate::state::{MeridianConfig, StrikeMarket, TickerConfig};
 
 /// Settles a market using the Pyth oracle price.
 ///
-/// Validates staleness and confidence, then determines whether
+/// Validates that the market close time has passed, then reads the Pyth v2
+/// price account to check staleness and confidence. Determines whether
 /// YES wins (price >= strike) or NO wins (price < strike).
 pub fn handler(ctx: Context<SettleMarket>) -> Result<()> {
     let market = &ctx.accounts.strike_market;
@@ -16,27 +17,49 @@ pub fn handler(ctx: Context<SettleMarket>) -> Result<()> {
     let config = &ctx.accounts.config;
     let clock = Clock::get()?;
 
+    // Ensure market close time has passed before allowing settlement.
+    let market_close_time = market
+        .trading_date
+        .checked_add(MARKET_CLOSE_SECONDS_UTC)
+        .ok_or(MeridianError::ArithmeticOverflow)?;
+    require!(
+        clock.unix_timestamp >= market_close_time,
+        MeridianError::MarketNotSettleable
+    );
+
     // Read price data from the Pyth price account.
     // The Pyth account is passed as an UncheckedAccount and we parse it manually.
     let pyth_account = &ctx.accounts.pyth_price_account;
     let pyth_data = pyth_account.try_borrow_data()?;
 
-    // Parse Pyth price feed data.
-    // Pyth v2 price account layout (simplified):
-    //   offset 0..4:   magic number
-    //   offset 208..216: price (i64)
-    //   offset 216..224: conf (u64)
-    //   offset 224..228: expo (i32)
-    //   offset 232..240: publish_time (i64)
+    // Parse Pyth v2 price account layout:
+    //   offset 0..4:     magic number (u32 LE, must be 0xa1b2c3d4)
+    //   offset 208..216: price (i64 LE)
+    //   offset 216..224: conf (u64 LE)
+    //   offset 224..228: expo (i32 LE)
+    //   offset 228..232: (padding)
+    //   offset 232..240: publish_time (i64 LE)
     //
-    // We validate minimum data length and parse key fields.
+    // We validate minimum data length, magic number, and parse key fields.
     require!(pyth_data.len() >= 240, MeridianError::InvalidOracleAccount);
+
+    // Validate Pyth v2 magic number (0xa1b2c3d4).
+    let magic = u32::from_le_bytes(
+        pyth_data[0..4]
+            .try_into()
+            .map_err(|_| MeridianError::InvalidOracleAccount)?,
+    );
+    require!(magic == 0xa1b2_c3d4, MeridianError::InvalidOracleAccount);
 
     let price = i64::from_le_bytes(
         pyth_data[208..216]
             .try_into()
             .map_err(|_| MeridianError::InvalidOracleAccount)?,
     );
+
+    // Price must be positive before any arithmetic (prevents i64→u64 wrapping).
+    require!(price > 0, MeridianError::InvalidOracleAccount);
+
     let conf = u64::from_le_bytes(
         pyth_data[216..224]
             .try_into()
@@ -64,8 +87,7 @@ pub fn handler(ctx: Context<SettleMarket>) -> Result<()> {
     );
 
     // Confidence check (conf / price in BPS).
-    // Avoid division by zero — price should be positive for settlement.
-    require!(price > 0, MeridianError::InvalidOracleAccount);
+    // Safe to cast: price is guaranteed positive above.
     let conf_bps = conf
         .checked_mul(10_000)
         .ok_or(MeridianError::ArithmeticOverflow)?
