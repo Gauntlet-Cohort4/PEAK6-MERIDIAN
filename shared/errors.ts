@@ -27,12 +27,12 @@ export enum MeridianErrorCode {
  * Carries an error code, human-readable message, optional cause, and context.
  */
 export class MeridianError extends Error {
-  public readonly name = 'MeridianError' as const;
+  public override readonly name = 'MeridianError' as const;
 
   constructor(
     public readonly code: MeridianErrorCode,
     message: string,
-    public readonly cause?: unknown,
+    public override readonly cause?: unknown,
     public readonly context?: Readonly<Record<string, unknown>>,
   ) {
     super(message);

@@ -4,7 +4,7 @@
  * All times are in the America/New_York timezone.
  */
 
-import { addDays, isWeekend, parse, startOfDay } from 'date-fns';
+import { addDays, isWeekend, startOfDay } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { MERIDIAN_CONFIG } from './constants.js';
 
