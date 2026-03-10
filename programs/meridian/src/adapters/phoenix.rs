@@ -1,17 +1,27 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::pubkey;
 use anchor_lang::solana_program::{instruction::Instruction, program::invoke_signed};
 
 use super::orderbook::{OrderBookAdapter, OrderParams, OrderSide, OrderType};
 use crate::errors::MeridianError;
 
-/// Phoenix Legacy program ID.
-const PHOENIX_PROGRAM_ID: &str = "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY";
+/// Phoenix Legacy program ID, parsed at compile time.
+const PHOENIX_PROGRAM_ID: Pubkey = pubkey!("PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY");
 
 /// Phoenix Legacy instruction discriminators.
-/// These are the first 8 bytes of the SHA-256 hash of the instruction name.
 ///
-/// TODO: Verify these discriminators against the actual Phoenix Legacy IDL
-/// during Phase 5 integration testing with Surfpool.
+/// # Safety
+///
+/// These discriminators are PLACEHOLDER values derived from analysis of the
+/// Phoenix Legacy program. They MUST be verified against the actual Phoenix
+/// Legacy IDL before any mainnet deployment. Phase 5 integration testing
+/// with Surfpool will validate these against the real Phoenix Legacy program.
+///
+/// The correct approach for production:
+/// 1. Fetch the Phoenix Legacy IDL from on-chain
+/// 2. Compute discriminators as sha256("global:<instruction_name>")[0..8]
+/// 3. Replace the hardcoded values below
+/// 4. Run integration tests against Surfpool with the real Phoenix program
 mod discriminators {
     /// `new_order` instruction discriminator.
     pub const NEW_ORDER: [u8; 8] = [0x99, 0x1e, 0x56, 0x3b, 0x35, 0x6a, 0x08, 0x01];
@@ -94,11 +104,9 @@ impl<'a, 'info> PhoenixLegacyAdapter<'a, 'info> {
         discriminators::CANCEL_ALL.to_vec()
     }
 
-    /// Returns the Phoenix program Pubkey.
-    fn phoenix_program_id() -> Result<Pubkey> {
+    /// Returns the Phoenix program Pubkey (compile-time constant).
+    fn phoenix_program_id() -> Pubkey {
         PHOENIX_PROGRAM_ID
-            .parse::<Pubkey>()
-            .map_err(|_| error!(MeridianError::PhoenixCpiFailed))
     }
 }
 
@@ -109,7 +117,7 @@ impl<'a, 'info> OrderBookAdapter<'info> for PhoenixLegacyAdapter<'a, 'info> {
         params: &OrderParams,
         signer_seeds: &[&[u8]],
     ) -> Result<()> {
-        let program_id = Self::phoenix_program_id()?;
+        let program_id = Self::phoenix_program_id();
 
         // Verify the phoenix program account matches expected ID.
         require!(
@@ -164,7 +172,7 @@ impl<'a, 'info> OrderBookAdapter<'info> for PhoenixLegacyAdapter<'a, 'info> {
         &self,
         signer_seeds: &[&[u8]],
     ) -> Result<()> {
-        let program_id = Self::phoenix_program_id()?;
+        let program_id = Self::phoenix_program_id();
 
         let ix_data = Self::build_cancel_all_data();
 
