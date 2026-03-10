@@ -5,9 +5,10 @@
  */
 
 import type { PriceServiceAdapter, TradingDayAdapter } from '@meridian/shared/adapters/types.js';
-import type { TransactionSender } from '../services/transaction-sender.js';
+import type { MeridianClient } from '../services/meridian-client.js';
 import { MERIDIAN_CONFIG, type SupportedTicker } from '@meridian/shared/constants.js';
 import { Logger } from '@meridian/shared/logger.js';
+import { debugLog } from '@meridian/shared/debug.js';
 import { startTrace, traceElapsed } from '@meridian/shared/tracing.js';
 import { calculateStrikes } from '../services/strike-calculator.js';
 
@@ -28,7 +29,7 @@ const TICKER_FEED_IDS: Readonly<Record<SupportedTicker, string>> = {
 export interface MorningJobDeps {
   readonly priceService: PriceServiceAdapter;
   readonly tradingDayService: TradingDayAdapter;
-  readonly transactionSender: TransactionSender;
+  readonly meridianClient: MeridianClient;
 }
 
 /** Summary of the morning job execution. */
@@ -61,6 +62,7 @@ async function processTicker(
   ticker: SupportedTicker,
   deps: MorningJobDeps,
   closeTimestamp: number,
+  tradingDate: number,
 ): Promise<{ strikesCreated: number; error?: string }> {
   const feedId = TICKER_FEED_IDS[ticker];
 
@@ -76,14 +78,32 @@ async function processTicker(
     context: { ticker, strikes },
   });
 
-  // STUB: In Stage B, create Phoenix market + StrikeMarket on-chain
+  let created = 0;
   for (const strike of strikes) {
-    logger.info('processTicker', `[STUB] Would create market: ${ticker} @ $${strike}`, {
-      context: { ticker, strike },
+    debugLog('CRON_JOBS', 'morning-job', 'processTicker', `Creating market: ${ticker} @ $${strike}`, {
+      ticker,
+      strike,
+      tradingDate,
     });
+
+    // TODO: Create Phoenix market first, then pass its address here
+    const phoenixMarketAddress = `phoenix-${ticker}-${strike}-${tradingDate}`;
+
+    const signature = await deps.meridianClient.createStrikeMarket({
+      ticker,
+      strikePrice: strike,
+      tradingDate,
+      phoenixMarketAddress,
+    });
+
+    logger.info('processTicker', `Market created: ${ticker} @ $${strike}`, {
+      context: { ticker, strike, signature },
+    });
+
+    created += 1;
   }
 
-  return { strikesCreated: strikes.length };
+  return { strikesCreated: created };
 }
 
 /**
@@ -110,6 +130,7 @@ export async function runMorningJob(
   }
 
   const closeTimestamp = getYesterdayCloseTimestamp(now);
+  const tradingDate = Math.floor(now.getTime() / 1000);
   const tickers = MERIDIAN_CONFIG.SUPPORTED_TICKERS;
   const failures: string[] = [];
   let totalStrikes = 0;
@@ -117,7 +138,7 @@ export async function runMorningJob(
 
   for (const ticker of tickers) {
     try {
-      const result = await processTicker(ticker, deps, closeTimestamp);
+      const result = await processTicker(ticker, deps, closeTimestamp, tradingDate);
       totalStrikes += result.strikesCreated;
       tickersProcessed += 1;
     } catch (err) {

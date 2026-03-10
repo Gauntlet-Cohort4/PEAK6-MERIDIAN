@@ -11,7 +11,7 @@ import {
 } from '../src/jobs/settlement-job.js';
 import type { PriceServiceAdapter, TradingDayAdapter } from '@meridian/shared/adapters/types.js';
 import type { PriceData } from '@meridian/shared/types.js';
-import type { TransactionSender } from '../src/services/transaction-sender.js';
+import type { MeridianClient } from '../src/services/meridian-client.js';
 
 function createMockPriceData(price: number): PriceData {
   return Object.freeze({
@@ -36,14 +36,16 @@ function createMockDeps(overrides?: Partial<SettlementJobDeps>): SettlementJobDe
     health: vi.fn().mockResolvedValue({ healthy: true, lastCheck: new Date() }),
   };
 
-  const transactionSender: TransactionSender = {
-    sendAndConfirm: vi.fn().mockResolvedValue('mock-tx-sig'),
+  const meridianClient: MeridianClient = {
+    createStrikeMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
+    settleMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
+    adminSettle: vi.fn().mockResolvedValue('mock-tx-sig'),
   };
 
   return {
     priceService: overrides?.priceService ?? priceService,
     tradingDayService: overrides?.tradingDayService ?? tradingDayService,
-    transactionSender: overrides?.transactionSender ?? transactionSender,
+    meridianClient: overrides?.meridianClient ?? meridianClient,
   };
 }
 

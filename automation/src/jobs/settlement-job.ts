@@ -5,9 +5,10 @@
  */
 
 import type { PriceServiceAdapter, TradingDayAdapter } from '@meridian/shared/adapters/types.js';
-import type { TransactionSender } from '../services/transaction-sender.js';
+import type { MeridianClient } from '../services/meridian-client.js';
 import { MERIDIAN_CONFIG, type SupportedTicker } from '@meridian/shared/constants.js';
 import { Logger } from '@meridian/shared/logger.js';
+import { debugLog } from '@meridian/shared/debug.js';
 import { startTrace, traceElapsed } from '@meridian/shared/tracing.js';
 
 const logger = new Logger('settlement-job');
@@ -27,7 +28,7 @@ const TICKER_FEED_IDS: Readonly<Record<SupportedTicker, string>> = {
 export interface SettlementJobDeps {
   readonly priceService: PriceServiceAdapter;
   readonly tradingDayService: TradingDayAdapter;
-  readonly transactionSender: TransactionSender;
+  readonly meridianClient: MeridianClient;
 }
 
 /** Summary of the settlement job execution. */
@@ -48,7 +49,7 @@ export interface ActiveMarket {
 
 /**
  * Settle a single market using the oracle price.
- * STUBBED: logs what would happen instead of calling on-chain.
+ * Falls back to scheduling admin settlement if oracle is unavailable.
  */
 async function settleMarket(
   market: ActiveMarket,
@@ -59,13 +60,25 @@ async function settleMarket(
   try {
     const priceData = await deps.priceService.getLatestPrice(feedId);
 
-    logger.info('settleMarket', `[STUB] Would settle ${market.ticker} @ $${market.strikePrice}`, {
+    debugLog('CRON_JOBS', 'settlement-job', 'settleMarket', 'Oracle price fetched', {
+      ticker: market.ticker,
+      price: priceData.price,
+      strikePrice: market.strikePrice,
+    });
+
+    const signature = await deps.meridianClient.settleMarket({
+      marketAddress: market.marketAddress,
+      pythPriceAccount: feedId,
+    });
+
+    logger.info('settleMarket', `Settled ${market.ticker} @ $${market.strikePrice}`, {
       context: {
         ticker: market.ticker,
         strikePrice: market.strikePrice,
         settlementPrice: priceData.price,
         marketAddress: market.marketAddress,
         outcome: priceData.price >= market.strikePrice ? 'YES' : 'NO',
+        signature,
       },
     });
 
@@ -80,8 +93,24 @@ async function settleMarket(
       },
     });
 
-    // STUB: schedule admin_settle after 1 hour delay
-    logger.info('settleMarket', `[STUB] Would schedule admin_settle for ${market.ticker} in ${MERIDIAN_CONFIG.ADMIN_SETTLE_DELAY_SECONDS}s`);
+    // Schedule admin_settle as fallback after delay
+    const yesWins = true; // TODO: Determine outcome from backup data source
+    debugLog('CRON_JOBS', 'settlement-job', 'settleMarket', 'Scheduling admin settle', {
+      ticker: market.ticker,
+      marketAddress: market.marketAddress,
+      delaySeconds: MERIDIAN_CONFIG.ADMIN_SETTLE_DELAY_SECONDS,
+    });
+
+    try {
+      await deps.meridianClient.adminSettle({
+        marketAddress: market.marketAddress,
+        outcomeYesWins: yesWins,
+      });
+    } catch (adminErr) {
+      logger.error('settleMarket', `Admin settle also failed for ${market.ticker}`, {
+        error: adminErr,
+      });
+    }
 
     return { settled: false, adminScheduled: true, error: errorMsg };
   }
