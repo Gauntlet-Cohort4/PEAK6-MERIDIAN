@@ -4,7 +4,7 @@
  * Reads environment variables once at import time.
  */
 
-import { Logger, LogLevel } from './logger.js';
+import { Logger, LogLevel } from './logger';
 
 /**
  * Read a boolean flag from the environment.

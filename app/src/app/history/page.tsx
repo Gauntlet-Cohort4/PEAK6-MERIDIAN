@@ -33,7 +33,7 @@ const MOCK_HISTORY = [
     timestamp: Date.now() - 10800 * 1000,
     txSignature: 'mock_tx_ghi789',
   },
-] as const;
+];
 
 function sideLabel(side: string): string {
   return side.replace(/_/g, ' ');

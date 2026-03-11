@@ -1,4 +1,4 @@
-# Meridian
+# BinBar
 
 Binary options prediction market on Solana, built by PEAK6.
 

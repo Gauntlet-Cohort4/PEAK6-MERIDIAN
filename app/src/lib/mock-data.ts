@@ -3,7 +3,7 @@
  * Realistic mock data for Stage A development.
  */
 
-import { MarketStatus, TradeSide } from '@meridian/shared/types';
+import { MarketStatus } from '@meridian/shared/types';
 import type {
   StrikeMarket,
   OrderBookState,
@@ -69,10 +69,12 @@ export const MOCK_MARKETS: readonly StrikeMarket[] = [
   },
 ] as const;
 
+const MOCK_SIZES = [35, 22, 48, 15, 42, 28, 51, 19, 37, 44];
+
 function makeBids(basePrice: number, count: number): OrderBookEntry[] {
   return Array.from({ length: count }, (_, i) => ({
     price: parseFloat((basePrice - i * 0.01).toFixed(2)),
-    size: Math.floor(Math.random() * 50 + 10),
+    size: MOCK_SIZES[i % MOCK_SIZES.length] ?? 25,
     side: 'bid' as const,
   }));
 }
@@ -80,7 +82,7 @@ function makeBids(basePrice: number, count: number): OrderBookEntry[] {
 function makeAsks(basePrice: number, count: number): OrderBookEntry[] {
   return Array.from({ length: count }, (_, i) => ({
     price: parseFloat((basePrice + i * 0.01).toFixed(2)),
-    size: Math.floor(Math.random() * 50 + 10),
+    size: MOCK_SIZES[(i + 5) % MOCK_SIZES.length] ?? 25,
     side: 'ask' as const,
   }));
 }

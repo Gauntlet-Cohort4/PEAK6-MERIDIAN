@@ -9,7 +9,7 @@ import { Wallet } from 'lucide-react';
  * Wallet connect/disconnect button.
  * Stage A: mock implementation. Stage B will wire to @solana/react-hooks.
  */
-export function WalletButton() {
+export function WalletButton(): React.JSX.Element {
   const [connected, setConnected] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
 

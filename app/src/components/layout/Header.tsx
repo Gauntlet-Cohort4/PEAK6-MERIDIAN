@@ -11,7 +11,7 @@ export function Header() {
       <div className="container mx-auto flex h-14 items-center px-4">
         <Link href="/" className="flex items-center gap-2 mr-6">
           <TrendingUp className="h-6 w-6 text-primary" />
-          <span className="font-bold text-lg">Meridian</span>
+          <span className="font-bold text-lg">BinBar</span>
         </Link>
 
         <nav className="flex items-center gap-4 text-sm">

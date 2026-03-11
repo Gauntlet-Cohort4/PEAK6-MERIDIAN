@@ -3,7 +3,7 @@
  * Shared TypeScript interfaces and enums for the Meridian platform.
  */
 
-import type { SupportedTicker } from './constants.js';
+import type { SupportedTicker } from './constants';
 
 /** Current status of a prediction market. */
 export enum MarketStatus {

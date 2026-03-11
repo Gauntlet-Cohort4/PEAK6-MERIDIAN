@@ -73,12 +73,12 @@ export function useTradeActions(): UseTradeActionsResult {
       // TODO: Get actual wallet from useWallet() hook
       const stubWallet: WalletConnection = {
         publicKey: order.traderPublicKey,
-        signTransaction: async (tx) => ({
+        signTransaction: async (_tx) => ({
           serialized: new Uint8Array([]),
         }),
       };
 
-      const { transaction } = buildTransactionForOrder(order, stubWallet);
+      const { transaction: _transaction } = buildTransactionForOrder(order, stubWallet);
 
       // TODO: Submit signed transaction to RPC
       // const signed = await stubWallet.signTransaction(transaction);

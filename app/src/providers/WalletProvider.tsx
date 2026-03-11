@@ -10,6 +10,6 @@ interface WalletProviderProps {
  * Wallet context provider.
  * Stage A: passthrough wrapper. Stage B will integrate @solana/react-hooks.
  */
-export function WalletProvider({ children }: WalletProviderProps) {
+export function WalletProvider({ children }: WalletProviderProps): React.JSX.Element {
   return <>{children}</>;
 }

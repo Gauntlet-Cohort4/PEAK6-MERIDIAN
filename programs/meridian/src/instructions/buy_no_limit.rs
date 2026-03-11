@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
 
-use crate::adapters::orderbook::{OrderParams, OrderSide, OrderType};
+use crate::adapters::orderbook::{OrderBookAdapter, OrderParams, OrderSide, OrderType};
 use crate::adapters::phoenix::PhoenixLegacyAdapter;
 use crate::constants::*;
 use crate::errors::MeridianError;

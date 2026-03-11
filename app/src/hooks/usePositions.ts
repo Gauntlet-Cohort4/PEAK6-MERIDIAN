@@ -18,7 +18,7 @@ export interface UsePositionsResult {
 export function usePositions(): UsePositionsResult {
   const [positions, setPositions] = useState<readonly Position[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, _setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Simulate async fetch

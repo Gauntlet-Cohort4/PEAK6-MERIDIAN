@@ -6,7 +6,7 @@
 
 import { addDays, isWeekend, startOfDay } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
-import { MERIDIAN_CONFIG } from './constants.js';
+import { MERIDIAN_CONFIG } from './constants';
 
 const NY_TZ = 'America/New_York';
 

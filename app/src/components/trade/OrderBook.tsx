@@ -86,7 +86,7 @@ export function OrderBook({ orderBookData, perspective }: OrderBookProps) {
       data-perspective={perspective}
     >
       <h3 className="text-sm font-semibold mb-3">
-        {perspective === 'yes' ? 'Yes' : 'No'} Order Book
+        &ldquo;{perspective === 'yes' ? 'Yes' : 'No'}&rdquo; Order Book
       </h3>
 
       <div className="grid grid-cols-2 gap-3">
