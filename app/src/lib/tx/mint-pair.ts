@@ -17,6 +17,7 @@ import {
   deriveVaultPda,
   deriveAta,
   TOKEN_PROGRAM_ID,
+  USDC_MINT,
 } from './program';
 import type {
   MintPairParams,
@@ -56,20 +57,11 @@ function validateMintPairParams(params: MintPairParams): void {
 }
 
 /**
- * Build a mint_pair transaction.
+ * Build a mint_pair transaction (sync stub).
  *
- * The mint_pair instruction deposits `amount * PAIR_COST_USDC` USDC
- * into the vault and mints `amount` YES tokens + `amount` NO tokens
- * to the trader's token accounts.
- *
- * Accounts are derived from the strike market PDA following the IDL seeds:
- *   config      = ["config"]
- *   yes_mint    = ["yes_mint", strike_market]
- *   no_mint     = ["no_mint", strike_market]
- *   vault       = ["vault", strike_market]
- *   user_usdc   = ATA(user, usdc_mint)
- *   user_yes    = ATA(user, yes_mint)
- *   user_no     = ATA(user, no_mint)
+ * @deprecated Use buildMintPairInstruction() instead. This sync version produces
+ * a stub with recentBlockhash='FETCH_VIA_CONNECTION' that cannot be submitted
+ * directly. It exists only for offline account derivation / UI previews.
  */
 export function buildMintPairTransaction(
   params: MintPairParams,
@@ -96,32 +88,14 @@ export function buildMintPairTransaction(
   const [vault] = deriveVaultPda(strikeMarket);
 
   // Derive user ATAs
-  const userUsdc = deriveAta(userPubkey, new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')); // USDC mint
+  const userUsdc = deriveAta(userPubkey, USDC_MINT);
   const userYes = deriveAta(userPubkey, yesMint);
   const userNo = deriveAta(userPubkey, noMint);
 
-  // Build instruction via Anchor
   const program = getMeridianProgram();
-  const ix = program.methods
-    .mintPair(new BN(params.amount))
-    .accountsPartial({
-      user: userPubkey,
-      config: configPda,
-      strikeMarket,
-      yesMint,
-      noMint,
-      userUsdc,
-      userYes,
-      userNo,
-      usdcMint: new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
-      vault,
-      tokenProgram: TOKEN_PROGRAM_ID,
-    })
-    .instruction();
 
-  // instruction() returns a Promise but we need a sync API for backwards compat.
-  // We serialize the instruction into our UnsignedTransaction format.
-  // The caller can await the actual Transaction via buildMintPairTransactionAsync.
+  // Sync path builds a stub instruction with hand-derived accounts.
+  // Use buildMintPairInstruction() for the real async Anchor path.
   const stubInstruction = {
     programId: program.programId.toBase58(),
     keys: [
@@ -133,7 +107,7 @@ export function buildMintPairTransaction(
       { pubkey: userUsdc.toBase58(), isSigner: false, isWritable: true },
       { pubkey: userYes.toBase58(), isSigner: false, isWritable: true },
       { pubkey: userNo.toBase58(), isSigner: false, isWritable: true },
-      { pubkey: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', isSigner: false, isWritable: false },
+      { pubkey: USDC_MINT.toBase58(), isSigner: false, isWritable: false },
       { pubkey: vault.toBase58(), isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID.toBase58(), isSigner: false, isWritable: false },
     ],
@@ -168,8 +142,7 @@ export async function buildMintPairInstruction(
   const [noMint] = deriveNoMintPda(strikeMarket);
   const [vault] = deriveVaultPda(strikeMarket);
 
-  const usdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-  const userUsdc = deriveAta(walletPubkey, usdcMint);
+  const userUsdc = deriveAta(walletPubkey, USDC_MINT);
   const userYes = deriveAta(walletPubkey, yesMint);
   const userNo = deriveAta(walletPubkey, noMint);
 
@@ -186,7 +159,7 @@ export async function buildMintPairInstruction(
       userUsdc,
       userYes,
       userNo,
-      usdcMint,
+      usdcMint: USDC_MINT,
       vault,
       tokenProgram: TOKEN_PROGRAM_ID,
     })

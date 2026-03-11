@@ -105,6 +105,7 @@ async function settleMarket(
       await deps.meridianClient.adminSettle({
         marketAddress: market.marketAddress,
         outcomeYesWins: yesWins,
+        settlementPrice: 0, // TODO: fetch from backup data source when oracle fails
       });
     } catch (adminErr) {
       logger.error('settleMarket', `Admin settle also failed for ${market.ticker}`, {

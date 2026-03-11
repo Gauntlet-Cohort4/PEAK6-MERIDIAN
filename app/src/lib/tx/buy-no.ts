@@ -21,6 +21,7 @@ import {
   deriveAta,
   TOKEN_PROGRAM_ID,
   PHOENIX_PROGRAM_ID,
+  USDC_MINT,
 } from './program';
 import type {
   BuyNoParams,
@@ -52,16 +53,11 @@ function validateBuyNoParams(params: BuyNoParams): void {
 }
 
 /**
- * Build a buy_no_market transaction.
+ * Build a buy_no_market transaction (sync stub).
  *
- * This instruction mints a YES+NO pair and sells the YES token at market
- * price on Phoenix, leaving the user with NO tokens.
- *
- * Accounts derived from the IDL:
- *   user, config, strike_market, yes_mint, no_mint,
- *   user_usdc, user_no, pda_yes_account, pda_quote_account,
- *   vault, phoenix_program, phoenix_market,
- *   phoenix_base_vault, phoenix_quote_vault, token_program
+ * @deprecated Use buildBuyNoInstruction() instead. This sync version produces
+ * a stub with recentBlockhash='FETCH_VIA_CONNECTION' that cannot be submitted
+ * directly. It exists only for offline account derivation / UI previews.
  */
 export function buildBuyNoTransaction(
   params: BuyNoParams,
@@ -86,8 +82,7 @@ export function buildBuyNoTransaction(
   const [vault] = deriveVaultPda(strikeMarket);
 
   // User ATAs
-  const usdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-  const userUsdc = deriveAta(userPubkey, usdcMint);
+  const userUsdc = deriveAta(userPubkey, USDC_MINT);
   const userNo = deriveAta(userPubkey, noMint);
 
   // Amount in base units (the on-chain instruction takes pair count, not USDC)
@@ -111,7 +106,7 @@ export function buildBuyNoTransaction(
       isWritable: true,
     },
     {
-      pubkey: marketAccounts?.pdaQuoteAccount.toBase58() ?? deriveAta(strikeMarket, usdcMint).toBase58(),
+      pubkey: marketAccounts?.pdaQuoteAccount.toBase58() ?? deriveAta(strikeMarket, USDC_MINT).toBase58(),
       isSigner: false,
       isWritable: true,
     },

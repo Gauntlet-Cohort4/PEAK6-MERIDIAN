@@ -91,6 +91,7 @@ describe('createMeridianClient (stub/demo mode)', () => {
       const params: AdminSettleParams = {
         marketAddress: 'market-admin-1',
         outcomeYesWins: true,
+        settlementPrice: 18500,
       };
 
       const sig = await client.adminSettle(params);
@@ -149,6 +150,7 @@ describe('createStubMeridianClient', () => {
       client.adminSettle({
         marketAddress: 'market-2',
         outcomeYesWins: false,
+        settlementPrice: 88000,
       }),
     ).resolves.toBeDefined();
   });

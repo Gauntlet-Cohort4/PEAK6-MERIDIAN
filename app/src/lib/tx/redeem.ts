@@ -15,6 +15,7 @@ import {
   deriveVaultPda,
   deriveAta,
   TOKEN_PROGRAM_ID,
+  USDC_MINT,
 } from './program';
 import type {
   RedeemParams,
@@ -45,16 +46,11 @@ function validateRedeemParams(params: RedeemParams): void {
 }
 
 /**
- * Build a redeem transaction.
+ * Build a redeem transaction (sync stub).
  *
- * After a market is settled, holders of the winning outcome token
- * can redeem each token for 1 USDC. Losing tokens are burned for 0.
- *
- * IDL instruction: redeem(amount: u64, redeem_yes: bool)
- *
- * Accounts derived from the IDL:
- *   user, strike_market, yes_mint, no_mint,
- *   user_yes, user_no, user_usdc, vault, token_program
+ * @deprecated Use buildRedeemInstruction() instead. This sync version produces
+ * a stub with recentBlockhash='FETCH_VIA_CONNECTION' that cannot be submitted
+ * directly. It exists only for offline account derivation / UI previews.
  */
 export function buildRedeemTransaction(
   params: RedeemParams,
@@ -76,13 +72,18 @@ export function buildRedeemTransaction(
   const [noMint] = deriveNoMintPda(strikeMarket);
   const [vault] = deriveVaultPda(strikeMarket);
 
-  const usdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-  const userUsdc = deriveAta(userPubkey, usdcMint);
+  const userUsdc = deriveAta(userPubkey, USDC_MINT);
   const userYes = deriveAta(userPubkey, yesMint);
   const userNo = deriveAta(userPubkey, noMint);
 
   const redeemYes = params.tokenType === 'yes';
-  const amount = params.amount ?? 1;
+  if (params.amount === undefined || params.amount <= 0) {
+    throw new MeridianError(
+      MeridianErrorCode.TRANSACTION_REJECTED,
+      'Amount is required and must be greater than zero for redeem',
+    );
+  }
+  const amount = params.amount;
 
   const program = getMeridianProgram();
 
@@ -130,17 +131,21 @@ export async function buildRedeemInstruction(
   const [noMint] = deriveNoMintPda(strikeMarket);
   const [vault] = deriveVaultPda(strikeMarket);
 
-  const usdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-  const userUsdc = deriveAta(walletPubkey, usdcMint);
+  const userUsdc = deriveAta(walletPubkey, USDC_MINT);
   const userYes = deriveAta(walletPubkey, yesMint);
   const userNo = deriveAta(walletPubkey, noMint);
 
   const redeemYes = params.tokenType === 'yes';
-  const amount = params.amount ?? 1;
+  if (params.amount === undefined || params.amount <= 0) {
+    throw new MeridianError(
+      MeridianErrorCode.TRANSACTION_REJECTED,
+      'Amount is required and must be greater than zero for redeem',
+    );
+  }
   const program = getMeridianProgram();
 
   return program.methods
-    .redeem(new BN(amount), redeemYes)
+    .redeem(new BN(params.amount), redeemYes)
     .accountsPartial({
       user: walletPubkey,
       strikeMarket,

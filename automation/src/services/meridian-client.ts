@@ -49,6 +49,7 @@ export interface SettleMarketParams {
 export interface AdminSettleParams {
   readonly marketAddress: string;
   readonly outcomeYesWins: boolean;
+  readonly settlementPrice: number;
 }
 
 /** Typed client interface for the Meridian Anchor program. */
@@ -248,6 +249,14 @@ export function createRealMeridianClient(deps: RealMeridianClientDeps): Meridian
 
   const program = new Program(MeridianIDL as Idl, provider);
 
+  // Validate that the IDL-embedded program address matches the runtime PROGRAM_ID
+  if (program.programId.toBase58() !== programPubkey.toBase58()) {
+    throw new MeridianError(
+      MeridianErrorCode.RPC_ERROR,
+      `PROGRAM_ID env var (${programPubkey.toBase58()}) does not match IDL address (${program.programId.toBase58()}). Update IDL or PROGRAM_ID.`,
+    );
+  }
+
   async function createStrikeMarket(params: CreateStrikeMarketParams): Promise<string> {
     logger.info('createStrikeMarket', `Creating strike market: ${params.ticker} @ $${params.strikePrice}`, {
       context: {
@@ -397,9 +406,8 @@ export function createRealMeridianClient(deps: RealMeridianClientDeps): Meridian
       });
 
       // admin_settle takes (outcome_yes_wins: bool, settlement_price: u64)
-      // Use 0 as settlement_price for admin override
       const instruction = await program.methods
-        .adminSettle(params.outcomeYesWins, new BN(0))
+        .adminSettle(params.outcomeYesWins, new BN(params.settlementPrice))
         .accounts({
           admin: adminKeypair.publicKey,
           config: configPda,

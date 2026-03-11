@@ -205,8 +205,11 @@ async function createStrikeMarkets(
     NVDA: 88000,  // $880.00
   };
 
-  // Phoenix market placeholder -- in production this would be a real Phoenix market
-  // For the demo we use a dummy keypair as the phoenix_market address
+  // WARNING: Phoenix market placeholder — this is a generated dummy keypair.
+  // In production, this MUST be replaced with a real Phoenix market address.
+  // The dummy keypair has no on-chain data, so any instruction that validates
+  // the Phoenix market account (owner, data) will fail. This is acceptable for
+  // demo/devnet only where create_strike_market stores but does not validate it.
   const phoenixMarketDummy = Keypair.generate();
 
   for (const ticker of demoTickers) {

@@ -22,7 +22,7 @@ export interface BuyNoParams {
 export interface SellNoParams {
   readonly marketAddress: string;
   /** Number of NO tokens to sell. Required by the on-chain sell_no instruction. */
-  readonly amount?: number;
+  readonly amount: number;
 }
 
 /** Parameters for redeeming outcome tokens after settlement. */
@@ -30,7 +30,7 @@ export interface RedeemParams {
   readonly marketAddress: string;
   readonly tokenType: 'yes' | 'no';
   /** Number of tokens to redeem. Required by the on-chain redeem instruction. */
-  readonly amount?: number;
+  readonly amount: number;
 }
 
 /** A wallet connection that can sign transactions. */

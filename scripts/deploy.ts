@@ -13,7 +13,7 @@
  *   SOLANA_CLUSTER=mainnet npx ts-node scripts/deploy.ts
  */
 
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import {
   BN,
   Connection,
@@ -87,13 +87,14 @@ function deployProgram(config: DeployConfig): string {
   log('2-deploy', `Deploying to ${config.cluster}...`, { rpcUrl: config.rpcUrl });
 
   try {
-    const output = execSync(
-      `anchor deploy --provider.cluster ${config.rpcUrl} --provider.wallet ${config.adminKeypairPath}`,
-      {
-        encoding: 'utf-8',
-        cwd: process.cwd(),
-      },
-    );
+    const output = execFileSync('anchor', [
+      'deploy',
+      '--provider.cluster', config.rpcUrl,
+      '--provider.wallet', config.adminKeypairPath,
+    ], {
+      encoding: 'utf-8',
+      cwd: process.cwd(),
+    });
 
     // Parse program ID from anchor deploy output
     const match = output.match(/Program Id:\s*([A-Za-z0-9]+)/);

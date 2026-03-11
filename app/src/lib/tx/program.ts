@@ -42,6 +42,16 @@ export const SYSTEM_PROGRAM_ID = new PublicKey(
   '11111111111111111111111111111111',
 );
 
+/**
+ * USDC mint address. Uses NEXT_PUBLIC_USDC_MINT env var if set,
+ * otherwise defaults to mainnet USDC (Circle-issued).
+ */
+export const USDC_MINT = new PublicKey(
+  typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_USDC_MINT']
+    ? process.env['NEXT_PUBLIC_USDC_MINT']
+    : 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+);
+
 // ── Program singleton ──────────────────────────────────────────────────
 
 let _program: Program | null = null;
@@ -60,8 +70,12 @@ export function getMeridianProgram(rpcUrl?: string): Program {
     return _program;
   }
 
+  const defaultRpc = typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_RPC_URL']
+    ? process.env['NEXT_PUBLIC_RPC_URL']
+    : 'https://api.mainnet-beta.solana.com';
+
   const connection = new Connection(
-    rpcUrl ?? 'https://api.mainnet-beta.solana.com',
+    rpcUrl ?? defaultRpc,
     'confirmed',
   );
 

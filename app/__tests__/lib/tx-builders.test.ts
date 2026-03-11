@@ -205,7 +205,7 @@ describe('buildBuyNoTransaction', () => {
 describe('buildSellNoTransaction', () => {
   it('should build a valid transaction', () => {
     const result = buildSellNoTransaction(
-      { marketAddress: 'market11111111111111111111111111111111111' },
+      { marketAddress: 'market11111111111111111111111111111111111', amount: 10 },
       mockWallet,
     );
 
@@ -215,7 +215,7 @@ describe('buildSellNoTransaction', () => {
 
   it('should include Phoenix program in accounts', () => {
     const result = buildSellNoTransaction(
-      { marketAddress: 'market11111111111111111111111111111111111' },
+      { marketAddress: 'market11111111111111111111111111111111111', amount: 10 },
       mockWallet,
     );
 
@@ -227,13 +227,13 @@ describe('buildSellNoTransaction', () => {
 
   it('should throw on empty market address', () => {
     expect(() =>
-      buildSellNoTransaction({ marketAddress: '' }, mockWallet),
+      buildSellNoTransaction({ marketAddress: '', amount: 10 }, mockWallet),
     ).toThrow(MeridianError);
   });
 
   it('should return frozen result', () => {
     const result = buildSellNoTransaction(
-      { marketAddress: 'market11111111111111111111111111111111111' },
+      { marketAddress: 'market11111111111111111111111111111111111', amount: 10 },
       mockWallet,
     );
     expect(Object.isFrozen(result)).toBe(true);
@@ -243,7 +243,7 @@ describe('buildSellNoTransaction', () => {
 describe('buildRedeemTransaction', () => {
   it('should build a valid transaction for YES token', () => {
     const result = buildRedeemTransaction(
-      { marketAddress: 'market11111111111111111111111111111111111', tokenType: 'yes' },
+      { marketAddress: 'market11111111111111111111111111111111111', tokenType: 'yes', amount: 5 },
       mockWallet,
     );
 
@@ -255,7 +255,7 @@ describe('buildRedeemTransaction', () => {
 
   it('should build a valid transaction for NO token', () => {
     const result = buildRedeemTransaction(
-      { marketAddress: 'market11111111111111111111111111111111111', tokenType: 'no' },
+      { marketAddress: 'market11111111111111111111111111111111111', tokenType: 'no', amount: 5 },
       mockWallet,
     );
 
@@ -265,13 +265,13 @@ describe('buildRedeemTransaction', () => {
 
   it('should throw on empty market address', () => {
     expect(() =>
-      buildRedeemTransaction({ marketAddress: '', tokenType: 'yes' }, mockWallet),
+      buildRedeemTransaction({ marketAddress: '', tokenType: 'yes', amount: 5 }, mockWallet),
     ).toThrow(MeridianError);
   });
 
   it('should return frozen result', () => {
     const result = buildRedeemTransaction(
-      { marketAddress: 'market11111111111111111111111111111111111', tokenType: 'yes' },
+      { marketAddress: 'market11111111111111111111111111111111111', tokenType: 'yes', amount: 5 },
       mockWallet,
     );
     expect(Object.isFrozen(result)).toBe(true);

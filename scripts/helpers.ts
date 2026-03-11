@@ -154,19 +154,31 @@ export function createProgram(provider: AnchorProvider): any {
 // ---------------------------------------------------------------------------
 
 export const PYTH_FEED_IDS: Readonly<Record<SupportedTicker, string>> = {
-  AAPL: 'b3a83305180090ac564afcc05ad973e5d1b7e0d1e9a8cc2b495a1cf0a4026752',
-  MSFT: 'c2e03ef975e12b5e0de3cc609e3e5f7e1cf4a35d327f89b97e7d174ab0d1c7c8',
-  GOOGL: 'e13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  AMZN: 'a13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  NVDA: 'b13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  META: 'c13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  TSLA: 'd13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
+  AAPL: '49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688',
+  MSFT: 'd0ca23c1cc005e004ccf1db5bf76aeb6a49218f43dac3d4b275e92de12ded4d1',
+  GOOGL: '5a48c03e9b9cb337801073ed9d166817473697efff0d138874e0f6a33d6d5aa6',
+  AMZN: 'b5d0e0fa58a1f8b81498ae670ce93c872d14434b72c364885d4fa1b257cbb07a',
+  NVDA: 'b1073854ed24cbc755dc527418f52b7d271f6cc967bbf8d8129112b18860a593',
+  META: '78a3e3b8e676a8f73c439f5d749737034b139bbbe899ba5775216fba596607fe',
+  TSLA: '16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1',
 };
 
-/** Devnet USDC mint (SPL Token). */
+/** Devnet USDC mint (SPL Token faucet). */
 export const DEVNET_USDC_MINT = new PublicKey(
+  '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+);
+
+/** Mainnet USDC mint (Circle-issued). */
+export const MAINNET_USDC_MINT = new PublicKey(
   'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
 );
+
+/** Get USDC mint based on cluster. */
+export function getUsdcMint(cluster: string = 'devnet'): PublicKey {
+  return cluster === 'mainnet-beta' || cluster === 'mainnet'
+    ? MAINNET_USDC_MINT
+    : DEVNET_USDC_MINT;
+}
 
 // ---------------------------------------------------------------------------
 // Well-known program addresses
@@ -200,18 +212,31 @@ export function log(
 // Date helpers
 // ---------------------------------------------------------------------------
 
-/** Returns today's midnight-ET Unix timestamp (seconds). */
+/** Returns today's midnight-ET Unix timestamp (seconds), DST-aware. */
 export function todayTradingDate(): BN {
-  const now = new Date();
-  // US Eastern = UTC-5 (ignoring DST for simplicity; real cron should use TZ lib)
-  const etOffset = -5 * 60;
-  const utcMs = now.getTime() + now.getTimezoneOffset() * 60_000;
-  const etMs = utcMs + etOffset * 60_000;
-  const etDate = new Date(etMs);
-  etDate.setHours(0, 0, 0, 0);
-  // Convert back to UTC timestamp
-  const midnightEtUtcMs = etDate.getTime() - etOffset * 60_000;
-  return new BN(Math.floor(midnightEtUtcMs / 1000));
+  // Use Intl to get the correct ET date string (handles DST automatically)
+  const etDateStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  // etDateStr is "YYYY-MM-DD", parse as midnight ET
+  const [year, month, day] = etDateStr.split('-').map(Number);
+  // Create a Date at midnight ET by finding the UTC offset for that date
+  const midnightET = new Date(
+    new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-05:00`).getTime(),
+  );
+  // Correct for DST: check if the ET timezone is actually -04:00 (EDT)
+  const etOffsetCheck = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    timeZoneName: 'shortOffset',
+  }).formatToParts(midnightET).find(p => p.type === 'timeZoneName')?.value;
+  const isEDT = etOffsetCheck?.includes('-4') ?? false;
+  const midnightUTC = new Date(
+    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00${isEDT ? '-04:00' : '-05:00'}`,
+  );
+  return new BN(Math.floor(midnightUTC.getTime() / 1000));
 }
 
 /** Wait for a given number of milliseconds. */

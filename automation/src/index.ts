@@ -28,16 +28,26 @@ import { Logger } from '@meridian/shared/logger.js';
 
 const logger = new Logger('automation');
 
-/** Default USDC mint on Solana mainnet/devnet. */
-const USDC_MINT_DEVNET = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
+/** USDC mint addresses by network. */
+const USDC_MINTS = {
+  devnet: new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'),
+  mainnet: new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
+} as const;
 
 /**
  * Load a Keypair from a JSON file containing a byte array.
  */
-function loadKeypairFromFile(path: string): Keypair {
-  const raw = readFileSync(path, 'utf-8');
-  const secretKey = new Uint8Array(JSON.parse(raw) as number[]);
-  return Keypair.fromSecretKey(secretKey);
+function loadKeypairFromFile(keypairPath: string): Keypair {
+  try {
+    const raw = readFileSync(keypairPath, 'utf-8');
+    const bytes = JSON.parse(raw) as unknown;
+    if (!Array.isArray(bytes) || bytes.length !== 64) {
+      throw new Error(`Expected 64-byte array, got ${Array.isArray(bytes) ? bytes.length : typeof bytes}`);
+    }
+    return Keypair.fromSecretKey(new Uint8Array(bytes));
+  } catch (err) {
+    throw new Error(`Failed to load admin keypair from '${keypairPath}': ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 /**
@@ -63,7 +73,9 @@ function buildMeridianClient(config: AutomationConfig): MeridianClient {
     adminKeypairPath: config.adminKeypairPath,
     connection,
     adminKeypair,
-    usdcMint: USDC_MINT_DEVNET,
+    usdcMint: config.solanaRpcUrl.includes('mainnet')
+      ? USDC_MINTS.mainnet
+      : USDC_MINTS.devnet,
   });
 }
 

@@ -20,6 +20,7 @@ import {
   deriveAta,
   TOKEN_PROGRAM_ID,
   PHOENIX_PROGRAM_ID,
+  USDC_MINT,
 } from './program';
 import type {
   SellNoParams,
@@ -42,16 +43,11 @@ function validateSellNoParams(params: SellNoParams): void {
 }
 
 /**
- * Build a sell_no transaction.
+ * Build a sell_no transaction (sync stub).
  *
- * This instruction buys YES on Phoenix and pairs it with the user's NO
- * to redeem USDC from the vault.
- *
- * Accounts derived from the IDL:
- *   user, strike_market, yes_mint, no_mint,
- *   user_usdc, user_no, pda_yes_account, pda_quote_account,
- *   vault, phoenix_program, phoenix_market,
- *   phoenix_base_vault, phoenix_quote_vault, token_program
+ * @deprecated Use buildSellNoInstruction() instead. This sync version produces
+ * a stub with recentBlockhash='FETCH_VIA_CONNECTION' that cannot be submitted
+ * directly. It exists only for offline account derivation / UI previews.
  */
 export function buildSellNoTransaction(
   params: SellNoParams,
@@ -73,12 +69,16 @@ export function buildSellNoTransaction(
   const [noMint] = deriveNoMintPda(strikeMarket);
   const [vault] = deriveVaultPda(strikeMarket);
 
-  const usdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-  const userUsdc = deriveAta(userPubkey, usdcMint);
+  const userUsdc = deriveAta(userPubkey, USDC_MINT);
   const userNo = deriveAta(userPubkey, noMint);
 
-  // Default amount to 1 if not specified (sell entire position happens off-chain)
-  const amount = params.amount ?? 1;
+  if (params.amount === undefined || params.amount <= 0) {
+    throw new MeridianError(
+      MeridianErrorCode.TRANSACTION_REJECTED,
+      'Amount is required and must be greater than zero for sell_no',
+    );
+  }
+  const amount = params.amount;
 
   const program = getMeridianProgram();
 
@@ -95,7 +95,7 @@ export function buildSellNoTransaction(
       isWritable: true,
     },
     {
-      pubkey: marketAccounts?.pdaQuoteAccount.toBase58() ?? deriveAta(strikeMarket, usdcMint).toBase58(),
+      pubkey: marketAccounts?.pdaQuoteAccount.toBase58() ?? deriveAta(strikeMarket, USDC_MINT).toBase58(),
       isSigner: false,
       isWritable: true,
     },
@@ -155,11 +155,16 @@ export async function buildSellNoInstruction(
   const userUsdc = deriveAta(walletPubkey, marketAccounts.usdcMint);
   const userNo = deriveAta(walletPubkey, noMint);
 
-  const amount = params.amount ?? 1;
+  if (params.amount === undefined || params.amount <= 0) {
+    throw new MeridianError(
+      MeridianErrorCode.TRANSACTION_REJECTED,
+      'Amount is required and must be greater than zero for sell_no',
+    );
+  }
   const program = getMeridianProgram();
 
   return program.methods
-    .sellNo(new BN(amount))
+    .sellNo(new BN(params.amount))
     .accountsPartial({
       user: walletPubkey,
       strikeMarket,

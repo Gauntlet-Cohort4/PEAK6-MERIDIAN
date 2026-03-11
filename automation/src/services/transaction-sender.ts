@@ -45,35 +45,16 @@ function sleep(ms: number): Promise<void> {
  */
 export function createStubTransactionSender(): TransactionSender {
   async function sendAndConfirm(
-    instruction: TransactionInstruction | unknown,
-    signers: readonly Keypair[] | unknown[],
+    _instruction: TransactionInstruction | unknown,
+    _signers: readonly Keypair[] | unknown[],
   ): Promise<string> {
-    const maxRetries = MERIDIAN_CONFIG.MAX_RETRIES_PER_MARKET;
+    const mockSignature = `stub-tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      logger.info('sendAndConfirm', `[STUB] Attempt ${attempt}/${maxRetries}`, {
-        context: {
-          transactionType: typeof instruction,
-          signerCount: signers.length,
-        },
-      });
+    logger.info('sendAndConfirm', '[STUB] Transaction would be sent', {
+      context: { signature: mockSignature },
+    });
 
-      // Simulate transaction sending
-      const mockSignature = `stub-tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-      logger.info('sendAndConfirm', `[STUB] Transaction would be sent`, {
-        context: {
-          signature: mockSignature,
-          attempt,
-        },
-      });
-
-      // In stub mode, always succeed on first attempt
-      return mockSignature;
-    }
-
-    // This line is unreachable in stub mode but satisfies the type system
-    throw new Error('All transaction attempts exhausted');
+    return mockSignature;
   }
 
   return { sendAndConfirm } as TransactionSender;
@@ -99,6 +80,8 @@ export function createRealTransactionSender(
   ): Promise<string> {
     const maxRetries = MERIDIAN_CONFIG.MAX_RETRIES_PER_MARKET;
     const delay = MERIDIAN_CONFIG.INTER_TX_DELAY_MS;
+
+    let lastError: unknown;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -136,59 +119,48 @@ export function createRealTransactionSender(
       }
     }
 
-    throw new Error(`All ${maxRetries} transaction attempts exhausted`);
+    throw lastError ?? new Error(`All ${maxRetries} transaction attempts exhausted`);
   }
 
   return { sendAndConfirm };
 }
 
 /**
- * Execute a transaction with full retry logic.
- * Returns a TransactionResult with attempt count and status.
+ * Execute a transaction with structured result tracking.
+ * Note: sendAndConfirm already retries internally — this wrapper
+ * provides a TransactionResult envelope, NOT additional retries.
  */
-export async function executeWithRetry(
+export async function executeWithResult(
   sender: TransactionSender,
   instruction: TransactionInstruction,
   signers: readonly Keypair[],
   label: string,
 ): Promise<TransactionResult> {
-  const maxRetries = MERIDIAN_CONFIG.MAX_RETRIES_PER_MARKET;
-  const delay = MERIDIAN_CONFIG.INTER_TX_DELAY_MS;
+  try {
+    logger.info('executeWithResult', `Sending ${label}`);
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      logger.info('executeWithRetry', `Sending ${label} (attempt ${attempt}/${maxRetries})`);
+    const signature = await sender.sendAndConfirm(instruction, signers);
 
-      const signature = await sender.sendAndConfirm(instruction, signers);
+    logger.info('executeWithResult', `${label} confirmed`, {
+      context: { signature },
+    });
 
-      logger.info('executeWithRetry', `${label} confirmed`, {
-        context: { signature, attempt },
-      });
+    return Object.freeze({
+      signature,
+      attempts: 1,
+      success: true,
+    });
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    logger.error('executeWithResult', `${label} failed: ${errorMsg}`, {
+      error: err,
+    });
 
-      return Object.freeze({
-        signature,
-        attempts: attempt,
-        success: true,
-      });
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      logger.warn('executeWithRetry', `${label} attempt ${attempt} failed: ${errorMsg}`, {
-        error: err,
-      });
-
-      if (attempt < maxRetries) {
-        await sleep(delay);
-      }
-    }
+    return Object.freeze({
+      signature: '',
+      attempts: 1,
+      success: false,
+      error: errorMsg,
+    });
   }
-
-  const errorMsg = `${label} failed after ${maxRetries} attempts`;
-  logger.error('executeWithRetry', errorMsg);
-
-  return Object.freeze({
-    signature: '',
-    attempts: maxRetries,
-    success: false,
-    error: errorMsg,
-  });
 }
