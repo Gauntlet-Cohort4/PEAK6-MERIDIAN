@@ -13,7 +13,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write '**/*.{ts,tsx,json,md}'",
     "format:check": "prettier --check '**/*.{ts,tsx,json,md}'",
-    "test": "npm run test --workspaces --if-present",
+    "test": "vitest run --workspace=vitest.workspace.ts",
+    "test:watch": "vitest --workspace=vitest.workspace.ts",
     "test:shared": "npm run test --workspace=shared",
     "clean": "rm -rf node_modules shared/node_modules automation/node_modules app/node_modules"
   },

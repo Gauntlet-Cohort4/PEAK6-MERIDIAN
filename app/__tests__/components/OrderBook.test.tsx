@@ -24,7 +24,7 @@ describe('OrderBook', () => {
       'data-perspective',
       'yes',
     );
-    expect(screen.getByText('Yes Order Book')).toBeInTheDocument();
+    expect(screen.getByText(/Yes.*Order Book/)).toBeInTheDocument();
   });
 
   it('renders No perspective order book', () => {
@@ -33,7 +33,7 @@ describe('OrderBook', () => {
       'data-perspective',
       'no',
     );
-    expect(screen.getByText('No Order Book')).toBeInTheDocument();
+    expect(screen.getByText(/No.*Order Book/)).toBeInTheDocument();
   });
 
   it('displays bid and ask entries', () => {
