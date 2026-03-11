@@ -3,9 +3,9 @@
  * Deployment script for the Meridian Anchor program.
  *
  * Steps:
- * 1. Build Anchor program
- * 2. Deploy to devnet
- * 3. Initialize config PDA
+ * 1. Build Anchor program (`anchor build`)
+ * 2. Deploy to target cluster (`anchor deploy`)
+ * 3. Initialize config PDA via on-chain instruction
  * 4. Register all 7 tickers with Pyth feed IDs
  *
  * Usage:
@@ -13,18 +13,33 @@
  *   SOLANA_CLUSTER=mainnet npx ts-node scripts/deploy.ts
  */
 
-import { MERIDIAN_CONFIG, type SupportedTicker } from '../shared/constants';
+import { execSync } from 'child_process';
+import {
+  BN,
+  Connection,
+  PublicKey,
+  Wallet,
+  log,
+  loadKeypair,
+  createProvider,
+  createProgram,
+  deriveConfigPda,
+  deriveTickerPda,
+  PYTH_FEED_IDS,
+  PROGRAM_ID,
+  SystemProgram,
+  sleep,
+} from './helpers';
 
-/** Pyth feed IDs for each supported ticker on devnet. */
-const PYTH_FEED_IDS: Readonly<Record<SupportedTicker, string>> = {
-  AAPL: 'b3a83305180090ac564afcc05ad973e5d1b7e0d1e9a8cc2b495a1cf0a4026752',
-  MSFT: 'c2e03ef975e12b5e0de3cc609e3e5f7e1cf4a35d327f89b97e7d174ab0d1c7c8',
-  GOOGL: 'e13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  AMZN: 'a13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  NVDA: 'b13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  META: 'c13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  TSLA: 'd13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-};
+/** Platform configuration mirrored from shared/constants. */
+const MERIDIAN_CONFIG = {
+  SUPPORTED_TICKERS: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA'] as const,
+  INTER_TX_DELAY_MS: 500,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
 
 interface DeployConfig {
   readonly cluster: string;
@@ -37,96 +52,159 @@ function loadDeployConfig(): DeployConfig {
   const cluster = process.env['SOLANA_CLUSTER'] ?? 'devnet';
   const rpcUrl = process.env['SOLANA_RPC_URL'] ?? 'https://api.devnet.solana.com';
   const adminKeypairPath = process.env['ADMIN_KEYPAIR_PATH'] ?? '~/.config/solana/id.json';
-  const programKeypairPath = process.env['PROGRAM_KEYPAIR_PATH']
-    ?? 'target/deploy/meridian-keypair.json';
+  const programKeypairPath =
+    process.env['PROGRAM_KEYPAIR_PATH'] ?? 'target/deploy/meridian-keypair.json';
 
   return Object.freeze({ cluster, rpcUrl, adminKeypairPath, programKeypairPath });
 }
 
-function log(step: string, message: string, data?: Record<string, unknown>): void {
-  const entry = {
-    timestamp: new Date().toISOString(),
-    step,
-    message,
-    ...(data ? { data } : {}),
-  };
-  console.log(JSON.stringify(entry, null, 2));
-}
+// ---------------------------------------------------------------------------
+// Step 1: Build
+// ---------------------------------------------------------------------------
 
-async function buildProgram(): Promise<void> {
+function buildProgram(): void {
   log('1-build', 'Building Anchor program...');
 
-  // TODO: Execute `anchor build` via child_process
-  // const { execSync } = require('child_process');
-  // execSync('anchor build', { stdio: 'inherit' });
-
-  log('1-build', 'Program build complete (stub)');
+  try {
+    execSync('anchor build', {
+      stdio: 'inherit',
+      cwd: process.cwd(),
+    });
+    log('1-build', 'Program build complete');
+  } catch (err) {
+    log('1-build', 'Build failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw new Error('anchor build failed');
+  }
 }
 
-async function deployProgram(config: DeployConfig): Promise<string> {
+// ---------------------------------------------------------------------------
+// Step 2: Deploy
+// ---------------------------------------------------------------------------
+
+function deployProgram(config: DeployConfig): string {
   log('2-deploy', `Deploying to ${config.cluster}...`, { rpcUrl: config.rpcUrl });
 
-  // TODO: Execute `anchor deploy --provider.cluster <cluster>`
-  // const { execSync } = require('child_process');
-  // const output = execSync(
-  //   `anchor deploy --provider.cluster ${config.cluster}`,
-  //   { encoding: 'utf-8' },
-  // );
-  // Parse program ID from output
+  try {
+    const output = execSync(
+      `anchor deploy --provider.cluster ${config.rpcUrl} --provider.wallet ${config.adminKeypairPath}`,
+      {
+        encoding: 'utf-8',
+        cwd: process.cwd(),
+      },
+    );
 
-  const mockProgramId = 'MeridianProgram111111111111111111';
-  log('2-deploy', 'Program deployed (stub)', { programId: mockProgramId });
-  return mockProgramId;
+    // Parse program ID from anchor deploy output
+    const match = output.match(/Program Id:\s*([A-Za-z0-9]+)/);
+    const programId = match ? match[1] : PROGRAM_ID.toBase58();
+
+    log('2-deploy', 'Program deployed', { programId, output: output.trim() });
+    return programId ?? PROGRAM_ID.toBase58();
+  } catch (err) {
+    log('2-deploy', 'Deploy failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw new Error('anchor deploy failed');
+  }
 }
 
-async function initializeConfig(
-  config: DeployConfig,
-  programId: string,
-): Promise<string> {
-  log('3-init', 'Initializing config PDA...', { programId });
+// ---------------------------------------------------------------------------
+// Step 3: Initialize Config
+// ---------------------------------------------------------------------------
 
-  // TODO: Build and send initialize_config instruction
-  // const program = new Program(MeridianIDL, programId, provider);
-  // const configPda = PublicKey.findProgramAddressSync(
-  //   [Buffer.from('config')],
-  //   program.programId,
-  // );
-  // const tx = await program.methods.initializeConfig().accounts({
-  //   config: configPda[0],
-  //   admin: adminKeypair.publicKey,
-  //   systemProgram: SystemProgram.programId,
-  // }).rpc();
+async function initializeConfig(program: any /* eslint-disable-line @typescript-eslint/no-explicit-any */, admin: ReturnType<typeof loadKeypair>): Promise<string> {
+  log('3-init', 'Initializing config PDA...');
 
-  const mockTx = `deploy-init-${Date.now()}`;
-  log('3-init', 'Config PDA initialized (stub)', { signature: mockTx });
-  return mockTx;
+  const [configPda] = deriveConfigPda();
+
+  // Check if already initialized
+  try {
+    const existing = await program.account['meridianConfig'].fetch(configPda);
+    if (existing) {
+      log('3-init', 'Config already initialized, skipping', {
+        configPda: configPda.toBase58(),
+      });
+      return 'already-initialized';
+    }
+  } catch {
+    // Not found, proceed
+  }
+
+  const tx = await program.methods
+    .initializeConfig()
+    .accountsStrict({
+      admin: admin.publicKey,
+      config: configPda,
+      systemProgram: SystemProgram.programId,
+    })
+    .signers([admin])
+    .rpc();
+
+  log('3-init', 'Config PDA initialized', {
+    signature: tx,
+    configPda: configPda.toBase58(),
+  });
+  return tx;
 }
+
+// ---------------------------------------------------------------------------
+// Step 4: Register All Tickers
+// ---------------------------------------------------------------------------
 
 async function registerAllTickers(
-  config: DeployConfig,
-  programId: string,
+  program: any /* eslint-disable-line @typescript-eslint/no-explicit-any */,
+  admin: ReturnType<typeof loadKeypair>,
 ): Promise<void> {
   log('4-register', 'Registering all tickers...');
 
+  const [configPda] = deriveConfigPda();
+
   for (const ticker of MERIDIAN_CONFIG.SUPPORTED_TICKERS) {
-    const feedId = PYTH_FEED_IDS[ticker];
+    const feedIdHex = PYTH_FEED_IDS[ticker];
+    const feedIdPubkey = new PublicKey(Buffer.from(feedIdHex, 'hex'));
+    const [tickerPda] = deriveTickerPda(ticker);
 
-    log('4-register', `Registering ${ticker}`, { ticker, feedId });
+    log('4-register', `Registering ${ticker}`, {
+      ticker,
+      feedId: feedIdHex,
+      tickerPda: tickerPda.toBase58(),
+    });
 
-    // TODO: Build and send register_ticker instruction
-    // const tx = await program.methods
-    //   .registerTicker(ticker, feedId)
-    //   .accounts({
-    //     config: configPda[0],
-    //     admin: adminKeypair.publicKey,
-    //   })
-    //   .rpc();
+    // Check if already registered
+    try {
+      const existing = await program.account['tickerConfig'].fetch(tickerPda);
+      if (existing) {
+        log('4-register', `Ticker already registered: ${ticker}`, {
+          tickerPda: tickerPda.toBase58(),
+        });
+        continue;
+      }
+    } catch {
+      // Not found, register
+    }
 
-    log('4-register', `Registered ${ticker} (stub)`, { ticker, feedId });
+    const tx = await program.methods
+      .registerTicker(ticker, feedIdPubkey)
+      .accountsStrict({
+        admin: admin.publicKey,
+        config: configPda,
+        tickerConfig: tickerPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([admin])
+      .rpc();
+
+    log('4-register', `Registered ${ticker}`, { signature: tx });
+    await sleep(MERIDIAN_CONFIG.INTER_TX_DELAY_MS);
   }
 
   log('4-register', `All ${MERIDIAN_CONFIG.SUPPORTED_TICKERS.length} tickers registered`);
 }
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
   log('start', '=== Meridian Deployment Script ===');
@@ -134,10 +212,21 @@ async function main(): Promise<void> {
   const config = loadDeployConfig();
   log('start', `Deploying to: ${config.cluster}`, { rpcUrl: config.rpcUrl });
 
-  await buildProgram();
-  const programId = await deployProgram(config);
-  await initializeConfig(config, programId);
-  await registerAllTickers(config, programId);
+  // Step 1: Build
+  buildProgram();
+
+  // Step 2: Deploy
+  const programId = deployProgram(config);
+
+  // Step 3+4: Initialize config + register tickers via Anchor Program
+  const connection = new Connection(config.rpcUrl, 'confirmed');
+  const admin = loadKeypair(config.adminKeypairPath);
+  const wallet = new Wallet(admin);
+  const provider = createProvider(connection, wallet);
+  const program = createProgram(provider);
+
+  await initializeConfig(program, admin);
+  await registerAllTickers(program, admin);
 
   log('done', '=== Deployment complete ===', {
     cluster: config.cluster,

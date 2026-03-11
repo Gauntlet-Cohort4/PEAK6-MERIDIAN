@@ -12,9 +12,21 @@ export type {
   UnsignedTransaction,
   SignedTransaction,
   BuildTransactionResult,
+  MarketAccounts,
 } from './types';
 
-export { buildMintPairTransaction } from './mint-pair';
-export { buildBuyNoTransaction } from './buy-no';
-export { buildSellNoTransaction } from './sell-no';
-export { buildRedeemTransaction } from './redeem';
+export { buildMintPairTransaction, buildMintPairInstruction } from './mint-pair';
+export { buildBuyNoTransaction, buildBuyNoInstruction } from './buy-no';
+export { buildSellNoTransaction, buildSellNoInstruction } from './sell-no';
+export { buildRedeemTransaction, buildRedeemInstruction } from './redeem';
+
+export {
+  getMeridianProgram,
+  getProgramId,
+  deriveConfigPda,
+  deriveYesMintPda,
+  deriveNoMintPda,
+  deriveVaultPda,
+  deriveAta,
+  SEEDS,
+} from './program';

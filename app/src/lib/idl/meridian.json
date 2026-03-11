@@ -1,0 +1,2466 @@
+{
+  "address": "AiG9ZAw6625w5zUQRsfmWwqXRmYSZAJe9MRfjcJoEK9h",
+  "metadata": {
+    "name": "meridian",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Solana binary options prediction market"
+  },
+  "instructions": [
+    {
+      "name": "add_strike",
+      "docs": [
+        "Adds a new strike market intraday."
+      ],
+      "discriminator": [
+        226,
+        190,
+        94,
+        4,
+        5,
+        106,
+        15,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "docs": [
+            "The program admin."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config PDA."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ticker_config",
+          "docs": [
+            "The ticker this strike belongs to."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  99,
+                  107,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticker_config.symbol",
+                "account": "TickerConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "strike_market",
+          "docs": [
+            "The new strike market PDA."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticker_config.symbol",
+                "account": "TickerConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "strike_price"
+              },
+              {
+                "kind": "arg",
+                "path": "trading_date"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yes_mint",
+          "docs": [
+            "YES outcome token mint (PDA)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  101,
+                  115,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "no_mint",
+          "docs": [
+            "NO outcome token mint (PDA)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint",
+          "docs": [
+            "USDC token mint (external)."
+          ]
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "USDC vault for this market."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "phoenix_market",
+          "docs": [
+            "Phoenix Legacy market (created off-chain)."
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "strike_price",
+          "type": "u64"
+        },
+        {
+          "name": "trading_date",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "admin_settle",
+      "docs": [
+        "Admin force-settles a market after the required delay."
+      ],
+      "discriminator": [
+        138,
+        218,
+        221,
+        118,
+        96,
+        220,
+        75,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "docs": [
+            "The program admin."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config PDA."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "strike_market",
+          "docs": [
+            "The strike market to force-settle."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.ticker",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.strike_price",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.trading_date",
+                "account": "StrikeMarket"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "outcome_yes_wins",
+          "type": "bool"
+        },
+        {
+          "name": "settlement_price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "buy_no_limit",
+      "docs": [
+        "Composite: mint pair + post Yes as limit sell on Phoenix."
+      ],
+      "discriminator": [
+        83,
+        53,
+        56,
+        97,
+        196,
+        15,
+        26,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "docs": [
+            "The user placing the limit order."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config (for pause check)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "strike_market",
+          "docs": [
+            "The strike market."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.ticker",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.strike_price",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.trading_date",
+                "account": "StrikeMarket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yes_mint",
+          "docs": [
+            "YES token mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  101,
+                  115,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "no_mint",
+          "docs": [
+            "NO token mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_usdc",
+          "docs": [
+            "User's USDC token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "docs": [
+            "User's NO token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "pda_yes_account",
+          "docs": [
+            "PDA-owned YES token account (for Phoenix listing)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "pda_quote_account",
+          "docs": [
+            "PDA-owned quote token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Market's USDC vault."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "phoenix_program",
+          "docs": [
+            "Phoenix Legacy program."
+          ]
+        },
+        {
+          "name": "phoenix_market",
+          "docs": [
+            "Phoenix market account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "phoenix_base_vault",
+          "docs": [
+            "Phoenix base vault."
+          ],
+          "writable": true
+        },
+        {
+          "name": "phoenix_quote_vault",
+          "docs": [
+            "Phoenix quote vault."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "price_in_ticks",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "buy_no_market",
+      "docs": [
+        "Composite: mint pair + sell Yes at market on Phoenix. User gets No."
+      ],
+      "discriminator": [
+        72,
+        172,
+        24,
+        220,
+        176,
+        181,
+        13,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "docs": [
+            "The user buying No tokens."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config (for pause check)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "strike_market",
+          "docs": [
+            "The strike market."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.ticker",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.strike_price",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.trading_date",
+                "account": "StrikeMarket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yes_mint",
+          "docs": [
+            "YES token mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  101,
+                  115,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "no_mint",
+          "docs": [
+            "NO token mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_usdc",
+          "docs": [
+            "User's USDC token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "docs": [
+            "User's NO token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "pda_yes_account",
+          "docs": [
+            "PDA-owned YES token account (for Phoenix selling)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "pda_quote_account",
+          "docs": [
+            "PDA-owned quote token account (receives USDC from Phoenix trade)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Market's USDC vault."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "phoenix_program",
+          "docs": [
+            "Phoenix Legacy program."
+          ]
+        },
+        {
+          "name": "phoenix_market",
+          "docs": [
+            "Phoenix market account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "phoenix_base_vault",
+          "docs": [
+            "Phoenix base vault."
+          ],
+          "writable": true
+        },
+        {
+          "name": "phoenix_quote_vault",
+          "docs": [
+            "Phoenix quote vault."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "create_strike_market",
+      "docs": [
+        "Creates a new strike market with Yes/No mints and USDC vault."
+      ],
+      "discriminator": [
+        21,
+        162,
+        50,
+        119,
+        68,
+        218,
+        221,
+        35
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "docs": [
+            "The program admin."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config PDA."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ticker_config",
+          "docs": [
+            "The ticker this market belongs to."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  99,
+                  107,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticker_config.symbol",
+                "account": "TickerConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "strike_market",
+          "docs": [
+            "The strike market PDA."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticker_config.symbol",
+                "account": "TickerConfig"
+              },
+              {
+                "kind": "arg",
+                "path": "strike_price"
+              },
+              {
+                "kind": "arg",
+                "path": "trading_date"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yes_mint",
+          "docs": [
+            "YES outcome token mint (PDA)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  101,
+                  115,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "no_mint",
+          "docs": [
+            "NO outcome token mint (PDA)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint",
+          "docs": [
+            "USDC token mint (external)."
+          ]
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "USDC vault for this market (PDA-owned ATA)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "phoenix_market",
+          "docs": [
+            "Phoenix Legacy market address (created off-chain)."
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "strike_price",
+          "type": "u64"
+        },
+        {
+          "name": "trading_date",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_config",
+      "docs": [
+        "Initializes the global program configuration. One-time call."
+      ],
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "docs": [
+            "The admin who will own the config."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config PDA — created once."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "mint_pair",
+      "docs": [
+        "Mints Yes/No token pairs by depositing USDC."
+      ],
+      "discriminator": [
+        19,
+        149,
+        94,
+        110,
+        181,
+        186,
+        33,
+        107
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "docs": [
+            "The user minting token pairs."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config (for pause check)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "strike_market",
+          "docs": [
+            "The strike market."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.ticker",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.strike_price",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.trading_date",
+                "account": "StrikeMarket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yes_mint",
+          "docs": [
+            "YES token mint (authority = strike_market PDA)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  101,
+                  115,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "no_mint",
+          "docs": [
+            "NO token mint (authority = strike_market PDA)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_usdc",
+          "docs": [
+            "User's USDC token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "user_yes",
+          "docs": [
+            "User's YES token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "docs": [
+            "User's NO token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "usdc_mint",
+          "docs": [
+            "USDC mint (external)."
+          ]
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Market's USDC vault."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "pause",
+      "docs": [
+        "Pauses the program (blocks minting and market creation)."
+      ],
+      "discriminator": [
+        211,
+        22,
+        221,
+        251,
+        74,
+        121,
+        193,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "docs": [
+            "The program admin."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config PDA (mutable to set paused flag)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "redeem",
+      "docs": [
+        "Redeems tokens after market settlement."
+      ],
+      "discriminator": [
+        184,
+        12,
+        86,
+        149,
+        70,
+        196,
+        97,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "docs": [
+            "The user redeeming tokens."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "strike_market",
+          "docs": [
+            "The settled strike market (mutable to track redemptions)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.ticker",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.strike_price",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.trading_date",
+                "account": "StrikeMarket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yes_mint",
+          "docs": [
+            "YES token mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  101,
+                  115,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "no_mint",
+          "docs": [
+            "NO token mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_yes",
+          "docs": [
+            "User's YES token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "docs": [
+            "User's NO token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "user_usdc",
+          "docs": [
+            "User's USDC token account (for payout). Must match vault mint."
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Market's USDC vault."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "redeem_yes",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "register_ticker",
+      "docs": [
+        "Registers a new ticker with its Pyth price-feed ID."
+      ],
+      "discriminator": [
+        18,
+        49,
+        241,
+        37,
+        111,
+        227,
+        32,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "docs": [
+            "The program admin."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config (read-only for admin check)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ticker_config",
+          "docs": [
+            "Ticker config PDA — created here."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  99,
+                  107,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "symbol"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "symbol",
+          "type": "string"
+        },
+        {
+          "name": "pyth_feed_id",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "sell_no",
+      "docs": [
+        "Composite: buy Yes on Phoenix + redeem Yes+No pair for USDC."
+      ],
+      "discriminator": [
+        189,
+        194,
+        132,
+        42,
+        80,
+        249,
+        154,
+        103
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "docs": [
+            "The user selling No tokens."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "strike_market",
+          "docs": [
+            "The strike market."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.ticker",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.strike_price",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.trading_date",
+                "account": "StrikeMarket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "yes_mint",
+          "docs": [
+            "YES token mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  121,
+                  101,
+                  115,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "no_mint",
+          "docs": [
+            "NO token mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_usdc",
+          "docs": [
+            "User's USDC token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "docs": [
+            "User's NO token account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "pda_yes_account",
+          "docs": [
+            "PDA-owned YES token account (receives Yes from Phoenix)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "pda_quote_account",
+          "docs": [
+            "PDA-owned quote token account (sends quote to Phoenix)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Market's USDC vault."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market"
+              }
+            ]
+          }
+        },
+        {
+          "name": "phoenix_program",
+          "docs": [
+            "Phoenix Legacy program."
+          ]
+        },
+        {
+          "name": "phoenix_market",
+          "docs": [
+            "Phoenix market account."
+          ],
+          "writable": true
+        },
+        {
+          "name": "phoenix_base_vault",
+          "docs": [
+            "Phoenix base vault."
+          ],
+          "writable": true
+        },
+        {
+          "name": "phoenix_quote_vault",
+          "docs": [
+            "Phoenix quote vault."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "settle_market",
+      "docs": [
+        "Settles a market using the Pyth oracle price."
+      ],
+      "discriminator": [
+        193,
+        153,
+        95,
+        216,
+        166,
+        6,
+        144,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "settler",
+          "docs": [
+            "Anyone can call settle (permissionless cranking)."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config (for threshold values)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ticker_config",
+          "docs": [
+            "The ticker config (to validate pyth feed)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  99,
+                  107,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "ticker_config.symbol",
+                "account": "TickerConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "strike_market",
+          "docs": [
+            "The strike market to settle."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.ticker",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.strike_price",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.trading_date",
+                "account": "StrikeMarket"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pyth_price_account",
+          "docs": [
+            "Pyth price account for the ticker."
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "unpause",
+      "docs": [
+        "Unpauses the program."
+      ],
+      "discriminator": [
+        169,
+        144,
+        4,
+        38,
+        10,
+        141,
+        188,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "docs": [
+            "The program admin."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config PDA (mutable to clear paused flag)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "MeridianConfig",
+      "discriminator": [
+        188,
+        16,
+        35,
+        87,
+        172,
+        21,
+        211,
+        200
+      ]
+    },
+    {
+      "name": "StrikeMarket",
+      "discriminator": [
+        109,
+        109,
+        58,
+        228,
+        193,
+        219,
+        99,
+        7
+      ]
+    },
+    {
+      "name": "TickerConfig",
+      "discriminator": [
+        146,
+        205,
+        119,
+        109,
+        54,
+        29,
+        71,
+        106
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "MarketCreated",
+      "discriminator": [
+        88,
+        184,
+        130,
+        231,
+        226,
+        84,
+        6,
+        58
+      ]
+    },
+    {
+      "name": "MarketSettled",
+      "discriminator": [
+        237,
+        212,
+        22,
+        175,
+        201,
+        117,
+        215,
+        99
+      ]
+    },
+    {
+      "name": "PairMinted",
+      "discriminator": [
+        24,
+        66,
+        202,
+        249,
+        156,
+        196,
+        33,
+        51
+      ]
+    },
+    {
+      "name": "TokensRedeemed",
+      "discriminator": [
+        45,
+        78,
+        148,
+        246,
+        116,
+        201,
+        3,
+        13
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "MarketAlreadySettled",
+      "msg": "Market already settled"
+    },
+    {
+      "code": 6001,
+      "name": "OraclePriceStale",
+      "msg": "Oracle price too stale"
+    },
+    {
+      "code": 6002,
+      "name": "OracleConfidenceTooWide",
+      "msg": "Oracle confidence too wide"
+    },
+    {
+      "code": 6003,
+      "name": "MarketNotSettleable",
+      "msg": "Market not yet settleable"
+    },
+    {
+      "code": 6004,
+      "name": "AdminSettleTooEarly",
+      "msg": "Admin settle too early"
+    },
+    {
+      "code": 6005,
+      "name": "ProgramPaused",
+      "msg": "Program is paused"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidStrikePrice",
+      "msg": "Invalid strike price"
+    },
+    {
+      "code": 6007,
+      "name": "InsufficientBalance",
+      "msg": "Insufficient USDC balance"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidTokenAccount",
+      "msg": "Invalid token account"
+    },
+    {
+      "code": 6009,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6010,
+      "name": "PhoenixCpiFailed",
+      "msg": "Phoenix CPI failed"
+    },
+    {
+      "code": 6011,
+      "name": "OpenBookCpiFailed",
+      "msg": "OpenBook CPI failed"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidOracleAccount",
+      "msg": "Invalid oracle account"
+    },
+    {
+      "code": 6013,
+      "name": "MarketCreationFailed",
+      "msg": "Market creation failed"
+    },
+    {
+      "code": 6014,
+      "name": "DuplicateStrike",
+      "msg": "Duplicate strike"
+    },
+    {
+      "code": 6015,
+      "name": "SymbolTooLong",
+      "msg": "Symbol too long"
+    },
+    {
+      "code": 6016,
+      "name": "TickerNotActive",
+      "msg": "Ticker not active"
+    },
+    {
+      "code": 6017,
+      "name": "MarketNotSettled",
+      "msg": "Market not settled"
+    },
+    {
+      "code": 6018,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6019,
+      "name": "ZeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6020,
+      "name": "TradingDatePast",
+      "msg": "Trading date in the past"
+    },
+    {
+      "code": 6021,
+      "name": "ProgramNotPaused",
+      "msg": "Program not paused"
+    }
+  ],
+  "types": [
+    {
+      "name": "MarketCreated",
+      "docs": [
+        "Emitted when a new strike market is created."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticker",
+            "type": "string"
+          },
+          {
+            "name": "strike_price",
+            "type": "u64"
+          },
+          {
+            "name": "trading_date",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketSettled",
+      "docs": [
+        "Emitted when a market is settled (either by oracle or admin)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "ticker",
+            "type": "string"
+          },
+          {
+            "name": "strike_price",
+            "type": "u64"
+          },
+          {
+            "name": "settlement_price",
+            "type": "u64"
+          },
+          {
+            "name": "yes_wins",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MeridianConfig",
+      "docs": [
+        "Global program configuration. Singleton PDA seeded by `[\"config\"]`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "docs": [
+              "The admin authority who can manage tickers, pause, and force-settle."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "docs": [
+              "Whether the program is paused (blocks minting and market creation)."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "staleness_threshold",
+            "docs": [
+              "Maximum age (seconds) an oracle price can be before it is rejected."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "confidence_threshold_bps",
+            "docs": [
+              "Maximum oracle confidence interval in basis points."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for the config account."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PairMinted",
+      "docs": [
+        "Emitted when a user mints a Yes/No token pair."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StrikeMarket",
+      "docs": [
+        "A binary-option strike market. PDA seeded by",
+        "`[\"market\", symbol_bytes, strike_price_le, trading_date_le]`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ticker",
+            "docs": [
+              "Ticker symbol this market is for (max 10 chars)."
+            ],
+            "type": "string"
+          },
+          {
+            "name": "strike_price",
+            "docs": [
+              "Strike price in cents (e.g. 58050 = $580.50)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "trading_date",
+            "docs": [
+              "Trading date as Unix timestamp of midnight ET."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "yes_mint",
+            "docs": [
+              "SPL token mint for YES outcome tokens (PDA)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "no_mint",
+            "docs": [
+              "SPL token mint for NO outcome tokens (PDA)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "docs": [
+              "USDC vault holding collateral for minted pairs (PDA ATA)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "phoenix_market",
+            "docs": [
+              "Phoenix Legacy market address for this strike."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "total_pairs_minted",
+            "docs": [
+              "Total number of Yes/No token pairs minted."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_pairs_redeemed",
+            "docs": [
+              "Total number of Yes/No token pairs redeemed (burned for USDC).",
+              "Vault invariant: vault_balance = (total_pairs_minted - total_pairs_redeemed) * PAIR_COST_LAMPORTS"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "settled",
+            "docs": [
+              "Whether this market has been settled."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "outcome_yes_wins",
+            "docs": [
+              "If settled, whether YES wins (price >= strike)."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "settlement_price",
+            "docs": [
+              "The oracle settlement price (in cents)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for the market account."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TickerConfig",
+      "docs": [
+        "Per-ticker configuration. PDA seeded by `[\"ticker\", symbol_bytes]`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "symbol",
+            "docs": [
+              "Ticker symbol, e.g. \"SPY\", \"QQQ\". Max 10 chars."
+            ],
+            "type": "string"
+          },
+          {
+            "name": "pyth_feed_id",
+            "docs": [
+              "The Pyth price-feed account for this ticker."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "active",
+            "docs": [
+              "Whether this ticker is currently active for new markets."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for the ticker account."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokensRedeemed",
+      "docs": [
+        "Emitted when a user redeems tokens after settlement."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_type",
+            "docs": [
+              "\"YES\" or \"NO\""
+            ],
+            "type": "string"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

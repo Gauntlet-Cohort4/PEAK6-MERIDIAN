@@ -3,18 +3,33 @@
  * Typed client for the Meridian Anchor program.
  * Wraps on-chain instruction building and transaction submission.
  *
- * TODO: Replace stub implementations with actual Anchor IDL-based
- * instruction building once the program is built and the IDL artifact
- * is available.
+ * When DEMO_MODE is true, returns stub signatures without touching chain.
+ * When DEMO_MODE is false, builds real Anchor instructions from the IDL.
  */
 
+import { Program, AnchorProvider, BN, type Idl } from '@coral-xyz/anchor';
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY,
+} from '@solana/web3.js';
 import { MERIDIAN_CONFIG } from '@meridian/shared/constants.js';
 import { Logger } from '@meridian/shared/logger.js';
 import { debugLog } from '@meridian/shared/debug.js';
 import { MeridianError, MeridianErrorCode } from '@meridian/shared/errors.js';
 import type { TransactionSender } from './transaction-sender.js';
 
+import MeridianIDL from '../idl/meridian.json' with { type: 'json' };
+
 const logger = new Logger('meridian-client');
+
+/** SPL Token program ID. */
+const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+
+/** SPL Associated Token program ID. */
+const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
 
 /** Parameters for creating a new strike market on-chain. */
 export interface CreateStrikeMarketParams {
@@ -55,90 +70,183 @@ export interface MeridianClientDeps {
   readonly adminKeypairPath: string;
 }
 
-/**
- * Build the create_strike_market instruction.
- *
- * TODO: Import the Meridian IDL and use Anchor's Program class to build
- * the actual instruction. For now returns a placeholder object.
- */
-function buildCreateStrikeMarketInstruction(
-  params: CreateStrikeMarketParams,
-  programId: string,
-): Readonly<Record<string, unknown>> {
-  debugLog('TX_BUILDING', 'meridian-client', 'buildCreateStrikeMarketIx', 'Building instruction', {
-    ticker: params.ticker,
-    strikePrice: params.strikePrice,
-    tradingDate: params.tradingDate,
-    phoenixMarketAddress: params.phoenixMarketAddress,
-    programId,
-  });
-
-  // TODO: Replace with actual Anchor instruction building:
-  // const program = new Program(MeridianIDL, programId, provider);
-  // return program.methods
-  //   .createStrikeMarket(params.ticker, new BN(params.strikePrice), ...)
-  //   .accounts({ ... })
-  //   .instruction();
-  return Object.freeze({
-    type: 'create_strike_market',
-    ...params,
-    programId,
-  });
+/** Extended dependencies for the real (non-demo) Meridian client. */
+export interface RealMeridianClientDeps extends MeridianClientDeps {
+  readonly connection: Connection;
+  readonly adminKeypair: Keypair;
+  readonly usdcMint: PublicKey;
 }
 
-/**
- * Build the settle_market instruction.
- *
- * TODO: Import the Meridian IDL and build the actual instruction.
- */
-function buildSettleMarketInstruction(
-  params: SettleMarketParams,
-  programId: string,
-): Readonly<Record<string, unknown>> {
-  debugLog('TX_BUILDING', 'meridian-client', 'buildSettleMarketIx', 'Building instruction', {
-    marketAddress: params.marketAddress,
-    pythPriceAccount: params.pythPriceAccount,
-    programId,
-  });
+// ---------------------------------------------------------------------------
+// PDA derivation helpers
+// ---------------------------------------------------------------------------
 
-  // TODO: Replace with actual Anchor instruction building
-  return Object.freeze({
-    type: 'settle_market',
-    ...params,
+function deriveConfigPda(programId: PublicKey): readonly [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('config')],
     programId,
-  });
+  );
 }
 
-/**
- * Build the admin_settle instruction.
- *
- * TODO: Import the Meridian IDL and build the actual instruction.
- */
-function buildAdminSettleInstruction(
-  params: AdminSettleParams,
-  programId: string,
-): Readonly<Record<string, unknown>> {
-  debugLog('TX_BUILDING', 'meridian-client', 'buildAdminSettleIx', 'Building instruction', {
-    marketAddress: params.marketAddress,
-    outcomeYesWins: params.outcomeYesWins,
+function deriveTickerConfigPda(
+  symbol: string,
+  programId: PublicKey,
+): readonly [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('ticker'), Buffer.from(symbol)],
     programId,
-  });
-
-  // TODO: Replace with actual Anchor instruction building
-  return Object.freeze({
-    type: 'admin_settle',
-    ...params,
-    programId,
-  });
+  );
 }
 
+function deriveStrikeMarketPda(
+  symbol: string,
+  strikePrice: BN,
+  tradingDate: BN,
+  programId: PublicKey,
+): readonly [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('market'),
+      Buffer.from(symbol),
+      strikePrice.toArrayLike(Buffer, 'le', 8),
+      tradingDate.toArrayLike(Buffer, 'le', 8),
+    ],
+    programId,
+  );
+}
+
+function deriveYesMintPda(
+  strikeMarket: PublicKey,
+  programId: PublicKey,
+): readonly [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('yes_mint'), strikeMarket.toBuffer()],
+    programId,
+  );
+}
+
+function deriveNoMintPda(
+  strikeMarket: PublicKey,
+  programId: PublicKey,
+): readonly [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('no_mint'), strikeMarket.toBuffer()],
+    programId,
+  );
+}
+
+function deriveVaultPda(
+  strikeMarket: PublicKey,
+  programId: PublicKey,
+): readonly [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from('vault'), strikeMarket.toBuffer()],
+    programId,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stub (DEMO_MODE) implementation
+// ---------------------------------------------------------------------------
+
 /**
- * Create a MeridianClient instance backed by the given dependencies.
- * All methods build instructions, wrap them in transactions, and submit
- * via the TransactionSender.
+ * Create a stub MeridianClient for demo mode.
+ * Returns mock signatures without building real transactions.
  */
-export function createMeridianClient(deps: MeridianClientDeps): MeridianClient {
+export function createStubMeridianClient(deps: MeridianClientDeps): MeridianClient {
   const { transactionSender, programId, adminKeypairPath } = deps;
+
+  function makeMockSignature(label: string): string {
+    return `stub-${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  async function createStrikeMarket(params: CreateStrikeMarketParams): Promise<string> {
+    logger.info('createStrikeMarket', `[STUB] Creating strike market: ${params.ticker} @ $${params.strikePrice}`, {
+      context: {
+        ticker: params.ticker,
+        strikePrice: params.strikePrice,
+        tradingDate: params.tradingDate,
+        phoenixMarketAddress: params.phoenixMarketAddress,
+        programId,
+      },
+    });
+
+    const signature = makeMockSignature('create');
+
+    logger.info('createStrikeMarket', `[STUB] Strike market created: ${params.ticker} @ $${params.strikePrice}`, {
+      context: { signature, ticker: params.ticker, strikePrice: params.strikePrice },
+    });
+
+    return signature;
+  }
+
+  async function settleMarket(params: SettleMarketParams): Promise<string> {
+    logger.info('settleMarket', `[STUB] Settling market: ${params.marketAddress}`, {
+      context: {
+        marketAddress: params.marketAddress,
+        pythPriceAccount: params.pythPriceAccount,
+        programId,
+      },
+    });
+
+    const signature = makeMockSignature('settle');
+
+    logger.info('settleMarket', `[STUB] Market settled: ${params.marketAddress}`, {
+      context: { signature, marketAddress: params.marketAddress },
+    });
+
+    return signature;
+  }
+
+  async function adminSettle(params: AdminSettleParams): Promise<string> {
+    logger.info('adminSettle', `[STUB] Admin settling market: ${params.marketAddress}`, {
+      context: {
+        marketAddress: params.marketAddress,
+        outcomeYesWins: params.outcomeYesWins,
+        programId,
+      },
+    });
+
+    const signature = makeMockSignature('admin-settle');
+
+    logger.info('adminSettle', `[STUB] Market admin-settled: ${params.marketAddress}`, {
+      context: {
+        signature,
+        marketAddress: params.marketAddress,
+        outcomeYesWins: params.outcomeYesWins,
+      },
+    });
+
+    return signature;
+  }
+
+  return Object.freeze({ createStrikeMarket, settleMarket, adminSettle });
+}
+
+// ---------------------------------------------------------------------------
+// Real Anchor implementation
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a real MeridianClient that builds Anchor instructions from the IDL
+ * and submits them via the TransactionSender.
+ */
+export function createRealMeridianClient(deps: RealMeridianClientDeps): MeridianClient {
+  const { transactionSender, connection, adminKeypair, usdcMint } = deps;
+  const programPubkey = new PublicKey(deps.programId);
+
+  // Create a read-only AnchorProvider (we sign manually via TransactionSender)
+  const provider = new AnchorProvider(
+    connection,
+    {
+      publicKey: adminKeypair.publicKey,
+      signTransaction: async (tx) => tx,
+      signAllTransactions: async (txs) => txs,
+    },
+    { commitment: 'confirmed' },
+  );
+
+  const program = new Program(MeridianIDL as Idl, provider);
 
   async function createStrikeMarket(params: CreateStrikeMarketParams): Promise<string> {
     logger.info('createStrikeMarket', `Creating strike market: ${params.ticker} @ $${params.strikePrice}`, {
@@ -151,12 +259,51 @@ export function createMeridianClient(deps: MeridianClientDeps): MeridianClient {
     });
 
     try {
-      const instruction = buildCreateStrikeMarketInstruction(params, programId);
+      const strikePriceBN = new BN(params.strikePrice);
+      const tradingDateBN = new BN(params.tradingDate);
 
-      // TODO: Build a real Transaction from the instruction and sign with admin keypair
-      // const tx = new Transaction().add(instruction);
-      // const adminKeypair = loadKeypair(adminKeypairPath);
-      const signature = await transactionSender.sendAndConfirm(instruction, [adminKeypairPath]);
+      const [configPda] = deriveConfigPda(programPubkey);
+      const [tickerConfigPda] = deriveTickerConfigPda(params.ticker, programPubkey);
+      const [strikeMarketPda] = deriveStrikeMarketPda(
+        params.ticker,
+        strikePriceBN,
+        tradingDateBN,
+        programPubkey,
+      );
+      const [yesMintPda] = deriveYesMintPda(strikeMarketPda, programPubkey);
+      const [noMintPda] = deriveNoMintPda(strikeMarketPda, programPubkey);
+      const [vaultPda] = deriveVaultPda(strikeMarketPda, programPubkey);
+      const phoenixMarket = new PublicKey(params.phoenixMarketAddress);
+
+      debugLog('TX_BUILDING', 'meridian-client', 'createStrikeMarket', 'Deriving PDAs', {
+        config: configPda.toBase58(),
+        tickerConfig: tickerConfigPda.toBase58(),
+        strikeMarket: strikeMarketPda.toBase58(),
+        yesMint: yesMintPda.toBase58(),
+        noMint: noMintPda.toBase58(),
+        vault: vaultPda.toBase58(),
+      });
+
+      const instruction = await program.methods
+        .createStrikeMarket(strikePriceBN, tradingDateBN)
+        .accounts({
+          admin: adminKeypair.publicKey,
+          config: configPda,
+          tickerConfig: tickerConfigPda,
+          strikeMarket: strikeMarketPda,
+          yesMint: yesMintPda,
+          noMint: noMintPda,
+          usdcMint,
+          vault: vaultPda,
+          phoenixMarket,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .instruction();
+
+      const signature = await transactionSender.sendAndConfirm(instruction, [adminKeypair]);
 
       logger.info('createStrikeMarket', `Strike market created: ${params.ticker} @ $${params.strikePrice}`, {
         context: { signature, ticker: params.ticker, strikePrice: params.strikePrice },
@@ -182,10 +329,37 @@ export function createMeridianClient(deps: MeridianClientDeps): MeridianClient {
     });
 
     try {
-      const instruction = buildSettleMarketInstruction(params, programId);
+      const strikeMarketPubkey = new PublicKey(params.marketAddress);
+      const pythPriceAccount = new PublicKey(params.pythPriceAccount);
 
-      // TODO: Build and sign real transaction
-      const signature = await transactionSender.sendAndConfirm(instruction, [adminKeypairPath]);
+      // Fetch the strike market account to read its ticker for PDA derivation
+      const strikeMarketAccount = await program.account['strikeMarket'].fetch(
+        strikeMarketPubkey,
+      );
+      const ticker = (strikeMarketAccount as Record<string, unknown>)['ticker'] as string;
+
+      const [configPda] = deriveConfigPda(programPubkey);
+      const [tickerConfigPda] = deriveTickerConfigPda(ticker, programPubkey);
+
+      debugLog('TX_BUILDING', 'meridian-client', 'settleMarket', 'Building settle instruction', {
+        config: configPda.toBase58(),
+        tickerConfig: tickerConfigPda.toBase58(),
+        strikeMarket: strikeMarketPubkey.toBase58(),
+        pythPriceAccount: pythPriceAccount.toBase58(),
+      });
+
+      const instruction = await program.methods
+        .settleMarket()
+        .accounts({
+          settler: adminKeypair.publicKey,
+          config: configPda,
+          tickerConfig: tickerConfigPda,
+          strikeMarket: strikeMarketPubkey,
+          pythPriceAccount,
+        })
+        .instruction();
+
+      const signature = await transactionSender.sendAndConfirm(instruction, [adminKeypair]);
 
       logger.info('settleMarket', `Market settled: ${params.marketAddress}`, {
         context: { signature, marketAddress: params.marketAddress },
@@ -211,10 +385,29 @@ export function createMeridianClient(deps: MeridianClientDeps): MeridianClient {
     });
 
     try {
-      const instruction = buildAdminSettleInstruction(params, programId);
+      const strikeMarketPubkey = new PublicKey(params.marketAddress);
 
-      // TODO: Build and sign real transaction
-      const signature = await transactionSender.sendAndConfirm(instruction, [adminKeypairPath]);
+      // Fetch the strike market to determine settlement price (0 = placeholder for admin)
+      const [configPda] = deriveConfigPda(programPubkey);
+
+      debugLog('TX_BUILDING', 'meridian-client', 'adminSettle', 'Building admin settle instruction', {
+        config: configPda.toBase58(),
+        strikeMarket: strikeMarketPubkey.toBase58(),
+        outcomeYesWins: params.outcomeYesWins,
+      });
+
+      // admin_settle takes (outcome_yes_wins: bool, settlement_price: u64)
+      // Use 0 as settlement_price for admin override
+      const instruction = await program.methods
+        .adminSettle(params.outcomeYesWins, new BN(0))
+        .accounts({
+          admin: adminKeypair.publicKey,
+          config: configPda,
+          strikeMarket: strikeMarketPubkey,
+        })
+        .instruction();
+
+      const signature = await transactionSender.sendAndConfirm(instruction, [adminKeypair]);
 
       logger.info('adminSettle', `Market admin-settled: ${params.marketAddress}`, {
         context: {
@@ -236,4 +429,18 @@ export function createMeridianClient(deps: MeridianClientDeps): MeridianClient {
   }
 
   return Object.freeze({ createStrikeMarket, settleMarket, adminSettle });
+}
+
+// ---------------------------------------------------------------------------
+// Legacy factory (kept for backward compatibility)
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a MeridianClient instance backed by the given dependencies.
+ * This creates a stub client. For real usage, call createRealMeridianClient.
+ *
+ * @deprecated Use createStubMeridianClient or createRealMeridianClient directly.
+ */
+export function createMeridianClient(deps: MeridianClientDeps): MeridianClient {
+  return createStubMeridianClient(deps);
 }

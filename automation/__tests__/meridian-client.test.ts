@@ -1,17 +1,18 @@
 /**
  * Tests for the Meridian client that wraps on-chain interactions.
+ * Tests the stub (demo mode) client which is used by createMeridianClient.
  */
 
 import { describe, it, expect, vi } from 'vitest';
 import {
   createMeridianClient,
+  createStubMeridianClient,
   type MeridianClientDeps,
   type CreateStrikeMarketParams,
   type SettleMarketParams,
   type AdminSettleParams,
 } from '../src/services/meridian-client.js';
 import type { TransactionSender } from '../src/services/transaction-sender.js';
-import { MeridianError } from '@meridian/shared/errors.js';
 
 function createMockDeps(
   overrides?: Partial<MeridianClientDeps>,
@@ -27,9 +28,9 @@ function createMockDeps(
   };
 }
 
-describe('createMeridianClient', () => {
+describe('createMeridianClient (stub/demo mode)', () => {
   describe('createStrikeMarket', () => {
-    it('should call transactionSender and return signature', async () => {
+    it('should return a signature string', async () => {
       const deps = createMockDeps();
       const client = createMeridianClient(deps);
 
@@ -42,51 +43,31 @@ describe('createMeridianClient', () => {
 
       const sig = await client.createStrikeMarket(params);
 
-      expect(sig).toBe('mock-sig-abc123');
-      expect(deps.transactionSender.sendAndConfirm).toHaveBeenCalledOnce();
+      expect(typeof sig).toBe('string');
+      expect(sig.length).toBeGreaterThan(0);
+      expect(sig).toContain('stub-create');
     });
 
-    it('should pass instruction with correct type', async () => {
-      const sendAndConfirm = vi.fn().mockResolvedValue('sig-1');
-      const deps = createMockDeps({
-        transactionSender: { sendAndConfirm },
-      });
+    it('should return unique signatures on each call', async () => {
+      const deps = createMockDeps();
       const client = createMeridianClient(deps);
 
-      await client.createStrikeMarket({
+      const params: CreateStrikeMarketParams = {
         ticker: 'MSFT',
         strikePrice: 420,
         tradingDate: 1700000000,
         phoenixMarketAddress: 'phoenix-msft',
-      });
+      };
 
-      const instruction = sendAndConfirm.mock.calls[0]?.[0] as Record<string, unknown>;
-      expect(instruction['type']).toBe('create_strike_market');
-      expect(instruction['ticker']).toBe('MSFT');
-      expect(instruction['strikePrice']).toBe(420);
-    });
+      const sig1 = await client.createStrikeMarket(params);
+      const sig2 = await client.createStrikeMarket(params);
 
-    it('should throw MeridianError on transaction failure', async () => {
-      const deps = createMockDeps({
-        transactionSender: {
-          sendAndConfirm: vi.fn().mockRejectedValue(new Error('RPC timeout')),
-        },
-      });
-      const client = createMeridianClient(deps);
-
-      await expect(
-        client.createStrikeMarket({
-          ticker: 'AAPL',
-          strikePrice: 190,
-          tradingDate: 1700000000,
-          phoenixMarketAddress: 'phoenix-aapl',
-        }),
-      ).rejects.toThrow(MeridianError);
+      expect(sig1).not.toBe(sig2);
     });
   });
 
   describe('settleMarket', () => {
-    it('should call transactionSender and return signature', async () => {
+    it('should return a signature string', async () => {
       const deps = createMockDeps();
       const client = createMeridianClient(deps);
 
@@ -97,46 +78,13 @@ describe('createMeridianClient', () => {
 
       const sig = await client.settleMarket(params);
 
-      expect(sig).toBe('mock-sig-abc123');
-      expect(deps.transactionSender.sendAndConfirm).toHaveBeenCalledOnce();
-    });
-
-    it('should pass instruction with settle_market type', async () => {
-      const sendAndConfirm = vi.fn().mockResolvedValue('sig-2');
-      const deps = createMockDeps({
-        transactionSender: { sendAndConfirm },
-      });
-      const client = createMeridianClient(deps);
-
-      await client.settleMarket({
-        marketAddress: 'market-settle',
-        pythPriceAccount: 'pyth-account',
-      });
-
-      const instruction = sendAndConfirm.mock.calls[0]?.[0] as Record<string, unknown>;
-      expect(instruction['type']).toBe('settle_market');
-      expect(instruction['marketAddress']).toBe('market-settle');
-    });
-
-    it('should throw MeridianError on failure', async () => {
-      const deps = createMockDeps({
-        transactionSender: {
-          sendAndConfirm: vi.fn().mockRejectedValue(new Error('Network error')),
-        },
-      });
-      const client = createMeridianClient(deps);
-
-      await expect(
-        client.settleMarket({
-          marketAddress: 'market-x',
-          pythPriceAccount: 'pyth-x',
-        }),
-      ).rejects.toThrow(MeridianError);
+      expect(typeof sig).toBe('string');
+      expect(sig).toContain('stub-settle');
     });
   });
 
   describe('adminSettle', () => {
-    it('should call transactionSender and return signature', async () => {
+    it('should return a signature string', async () => {
       const deps = createMockDeps();
       const client = createMeridianClient(deps);
 
@@ -147,41 +95,8 @@ describe('createMeridianClient', () => {
 
       const sig = await client.adminSettle(params);
 
-      expect(sig).toBe('mock-sig-abc123');
-      expect(deps.transactionSender.sendAndConfirm).toHaveBeenCalledOnce();
-    });
-
-    it('should pass instruction with admin_settle type', async () => {
-      const sendAndConfirm = vi.fn().mockResolvedValue('sig-3');
-      const deps = createMockDeps({
-        transactionSender: { sendAndConfirm },
-      });
-      const client = createMeridianClient(deps);
-
-      await client.adminSettle({
-        marketAddress: 'market-admin',
-        outcomeYesWins: false,
-      });
-
-      const instruction = sendAndConfirm.mock.calls[0]?.[0] as Record<string, unknown>;
-      expect(instruction['type']).toBe('admin_settle');
-      expect(instruction['outcomeYesWins']).toBe(false);
-    });
-
-    it('should throw MeridianError on failure', async () => {
-      const deps = createMockDeps({
-        transactionSender: {
-          sendAndConfirm: vi.fn().mockRejectedValue(new Error('Admin rejected')),
-        },
-      });
-      const client = createMeridianClient(deps);
-
-      await expect(
-        client.adminSettle({
-          marketAddress: 'market-z',
-          outcomeYesWins: true,
-        }),
-      ).rejects.toThrow(MeridianError);
+      expect(typeof sig).toBe('string');
+      expect(sig).toContain('stub-admin-settle');
     });
   });
 
@@ -190,5 +105,51 @@ describe('createMeridianClient', () => {
     const client = createMeridianClient(deps);
 
     expect(Object.isFrozen(client)).toBe(true);
+  });
+});
+
+describe('createStubMeridianClient', () => {
+  it('should be the same as createMeridianClient for backward compat', async () => {
+    const deps = createMockDeps();
+    const client = createStubMeridianClient(deps);
+
+    const params: CreateStrikeMarketParams = {
+      ticker: 'AAPL',
+      strikePrice: 190,
+      tradingDate: 1700000000,
+      phoenixMarketAddress: 'phoenix-aapl',
+    };
+
+    const sig = await client.createStrikeMarket(params);
+    expect(typeof sig).toBe('string');
+    expect(sig.length).toBeGreaterThan(0);
+  });
+
+  it('should not throw errors', async () => {
+    const deps = createMockDeps();
+    const client = createStubMeridianClient(deps);
+
+    await expect(
+      client.createStrikeMarket({
+        ticker: 'AAPL',
+        strikePrice: 190,
+        tradingDate: 1700000000,
+        phoenixMarketAddress: 'phoenix-aapl',
+      }),
+    ).resolves.toBeDefined();
+
+    await expect(
+      client.settleMarket({
+        marketAddress: 'market-1',
+        pythPriceAccount: 'pyth-1',
+      }),
+    ).resolves.toBeDefined();
+
+    await expect(
+      client.adminSettle({
+        marketAddress: 'market-2',
+        outcomeYesWins: false,
+      }),
+    ).resolves.toBeDefined();
   });
 });

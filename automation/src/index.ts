@@ -5,17 +5,67 @@
  */
 
 import 'dotenv/config';
+import { readFileSync } from 'node:fs';
 import cron from 'node-cron';
+import { Connection, Keypair } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { loadConfig, type AutomationConfig } from './config.js';
 import { createPythHermesClient } from './services/pyth-hermes-client.js';
 import { createTradingDayService } from './services/trading-day-service.js';
 import { createDemoPriceService, createDemoTradingDayService } from './services/demo-mode.js';
-import { createStubTransactionSender } from './services/transaction-sender.js';
+import {
+  createStubTransactionSender,
+  createRealTransactionSender,
+} from './services/transaction-sender.js';
+import {
+  createStubMeridianClient,
+  createRealMeridianClient,
+  type MeridianClient,
+} from './services/meridian-client.js';
 import { runMorningJob, type MorningJobDeps } from './jobs/morning-job.js';
 import { runSettlementJob, type SettlementJobDeps } from './jobs/settlement-job.js';
 import { Logger } from '@meridian/shared/logger.js';
 
 const logger = new Logger('automation');
+
+/** Default USDC mint on Solana mainnet/devnet. */
+const USDC_MINT_DEVNET = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
+
+/**
+ * Load a Keypair from a JSON file containing a byte array.
+ */
+function loadKeypairFromFile(path: string): Keypair {
+  const raw = readFileSync(path, 'utf-8');
+  const secretKey = new Uint8Array(JSON.parse(raw) as number[]);
+  return Keypair.fromSecretKey(secretKey);
+}
+
+/**
+ * Build the MeridianClient based on demo mode flag.
+ */
+function buildMeridianClient(config: AutomationConfig): MeridianClient {
+  if (config.demoMode) {
+    const transactionSender = createStubTransactionSender();
+    return createStubMeridianClient({
+      transactionSender,
+      programId: config.programId,
+      adminKeypairPath: config.adminKeypairPath,
+    });
+  }
+
+  const connection = new Connection(config.solanaRpcUrl, 'confirmed');
+  const adminKeypair = loadKeypairFromFile(config.adminKeypairPath);
+  const transactionSender = createRealTransactionSender({ connection });
+
+  return createRealMeridianClient({
+    transactionSender,
+    programId: config.programId,
+    adminKeypairPath: config.adminKeypairPath,
+    connection,
+    adminKeypair,
+    usdcMint: USDC_MINT_DEVNET,
+  });
+}
 
 /**
  * Build service dependencies from configuration.
@@ -32,9 +82,9 @@ function buildDeps(config: AutomationConfig): MorningJobDeps & SettlementJobDeps
     ? createDemoTradingDayService()
     : createTradingDayService({ finnhubApiKey: config.finnhubApiKey });
 
-  const transactionSender = createStubTransactionSender();
+  const meridianClient = buildMeridianClient(config);
 
-  return { priceService, tradingDayService, transactionSender };
+  return { priceService, tradingDayService, meridianClient };
 }
 
 /**

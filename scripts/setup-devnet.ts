@@ -1,31 +1,54 @@
 /**
  * @module scripts/setup-devnet
- * One-time devnet setup script.
+ * One-time devnet setup script for Meridian.
  *
  * Steps:
  * 1. Airdrop SOL to admin wallet
- * 2. Create USDC token accounts
- * 3. Register tickers with Pyth feed IDs
+ * 2. Create USDC associated token account for admin
+ * 3. Register all 7 tickers with Pyth feed IDs
  *
  * Usage:
  *   npx ts-node scripts/setup-devnet.ts
  */
 
-import { MERIDIAN_CONFIG, type SupportedTicker } from '../shared/constants';
+import {
+  BN,
+  Connection,
+  Keypair,
+  PublicKey,
+  Wallet,
+  LAMPORTS_PER_SOL,
+  log,
+  loadKeypair,
+  createProvider,
+  createProgram,
+  airdropAndConfirm,
+  deriveConfigPda,
+  deriveTickerPda,
+  sleep,
+  PYTH_FEED_IDS,
+  DEVNET_USDC_MINT,
+  PROGRAM_ID,
+  SystemProgram,
+  getAssociatedTokenAddress,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from './helpers';
+import {
+  createAssociatedTokenAccountInstruction,
+} from '@solana/spl-token';
+import { Transaction } from '@solana/web3.js';
 
-/** Pyth feed IDs for each supported ticker on devnet. */
-const PYTH_FEED_IDS: Readonly<Record<SupportedTicker, string>> = {
-  AAPL: 'b3a83305180090ac564afcc05ad973e5d1b7e0d1e9a8cc2b495a1cf0a4026752',
-  MSFT: 'c2e03ef975e12b5e0de3cc609e3e5f7e1cf4a35d327f89b97e7d174ab0d1c7c8',
-  GOOGL: 'e13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  AMZN: 'a13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  NVDA: 'b13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  META: 'c13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  TSLA: 'd13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-};
+/** Platform configuration mirrored from shared/constants. */
+const MERIDIAN_CONFIG = {
+  SUPPORTED_TICKERS: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA'] as const,
+  USDC_DECIMALS: 6,
+  INTER_TX_DELAY_MS: 500,
+} as const;
 
-/** Devnet USDC mint (SPL Token). */
-const DEVNET_USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
 
 interface SetupConfig {
   readonly rpcUrl: string;
@@ -38,77 +61,152 @@ function loadSetupConfig(): SetupConfig {
   return Object.freeze({
     rpcUrl: process.env['SOLANA_RPC_URL'] ?? 'https://api.devnet.solana.com',
     adminKeypairPath: process.env['ADMIN_KEYPAIR_PATH'] ?? '~/.config/solana/id.json',
-    programId: process.env['PROGRAM_ID'] ?? 'MeridianProgram111111111111111111',
+    programId: process.env['PROGRAM_ID'] ?? PROGRAM_ID.toBase58(),
     airdropAmountSol: 2,
   });
 }
 
-function log(step: string, message: string, data?: Record<string, unknown>): void {
-  const entry = {
-    timestamp: new Date().toISOString(),
-    step,
-    message,
-    ...(data ? { data } : {}),
-  };
-  console.log(JSON.stringify(entry, null, 2));
-}
+// ---------------------------------------------------------------------------
+// Step 1: Airdrop SOL
+// ---------------------------------------------------------------------------
 
-async function airdropSol(config: SetupConfig): Promise<void> {
-  log('1-airdrop', `Requesting ${config.airdropAmountSol} SOL airdrop`, {
-    rpcUrl: config.rpcUrl,
-    adminKeypairPath: config.adminKeypairPath,
+async function airdropSol(
+  connection: Connection,
+  admin: Keypair,
+  amountSol: number,
+): Promise<void> {
+  log('1-airdrop', `Requesting ${amountSol} SOL airdrop`, {
+    admin: admin.publicKey.toBase58(),
   });
 
-  // TODO: Request airdrop via RPC
-  // const connection = new Connection(config.rpcUrl);
-  // const adminKeypair = loadKeypair(config.adminKeypairPath);
-  // const sig = await connection.requestAirdrop(
-  //   adminKeypair.publicKey,
-  //   config.airdropAmountSol * LAMPORTS_PER_SOL,
-  // );
-  // await connection.confirmTransaction(sig);
-
-  log('1-airdrop', `Airdrop complete (stub): ${config.airdropAmountSol} SOL`);
-}
-
-async function createUsdcAccounts(config: SetupConfig): Promise<void> {
-  log('2-usdc', 'Creating USDC token accounts', {
-    usdcMint: DEVNET_USDC_MINT,
+  const balanceBefore = await connection.getBalance(admin.publicKey);
+  log('1-airdrop', 'Balance before airdrop', {
+    balanceSol: balanceBefore / LAMPORTS_PER_SOL,
   });
 
-  // TODO: Create associated token account for USDC
-  // const connection = new Connection(config.rpcUrl);
-  // const adminKeypair = loadKeypair(config.adminKeypairPath);
-  // const ata = await getOrCreateAssociatedTokenAccount(
-  //   connection,
-  //   adminKeypair,
-  //   new PublicKey(DEVNET_USDC_MINT),
-  //   adminKeypair.publicKey,
-  // );
+  // Airdrop in chunks (devnet has a 2 SOL per-request limit)
+  const chunkSize = Math.min(amountSol, 2);
+  const chunks = Math.ceil(amountSol / chunkSize);
 
-  log('2-usdc', 'USDC token accounts created (stub)', {
-    usdcMint: DEVNET_USDC_MINT,
+  for (let i = 0; i < chunks; i++) {
+    const lamports = chunkSize * LAMPORTS_PER_SOL;
+    const sig = await airdropAndConfirm(connection, admin.publicKey, lamports);
+    log('1-airdrop', `Airdrop chunk ${i + 1}/${chunks} confirmed`, { signature: sig });
+
+    if (i < chunks - 1) {
+      await sleep(1000); // Rate limit
+    }
+  }
+
+  const balanceAfter = await connection.getBalance(admin.publicKey);
+  log('1-airdrop', `Airdrop complete`, {
+    balanceSol: balanceAfter / LAMPORTS_PER_SOL,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Step 2: Create USDC Token Accounts
+// ---------------------------------------------------------------------------
+
+async function createUsdcAccounts(
+  connection: Connection,
+  admin: Keypair,
+): Promise<void> {
+  log('2-usdc', 'Creating USDC associated token account', {
+    usdcMint: DEVNET_USDC_MINT.toBase58(),
+  });
+
+  const ata = await getAssociatedTokenAddress(DEVNET_USDC_MINT, admin.publicKey);
+
+  // Check if the ATA already exists
+  const accountInfo = await connection.getAccountInfo(ata);
+  if (accountInfo !== null) {
+    log('2-usdc', 'USDC ATA already exists, skipping', {
+      ata: ata.toBase58(),
+    });
+    return;
+  }
+
+  const ix = createAssociatedTokenAccountInstruction(
+    admin.publicKey,      // payer
+    ata,                  // associatedToken
+    admin.publicKey,      // owner
+    DEVNET_USDC_MINT,     // mint
+  );
+
+  const tx = new Transaction().add(ix);
+  tx.feePayer = admin.publicKey;
+  const latestBlockhash = await connection.getLatestBlockhash();
+  tx.recentBlockhash = latestBlockhash.blockhash;
+  tx.sign(admin);
+
+  const sig = await connection.sendRawTransaction(tx.serialize());
+  await connection.confirmTransaction(sig, 'confirmed');
+
+  log('2-usdc', 'USDC ATA created', {
+    signature: sig,
+    ata: ata.toBase58(),
     decimals: MERIDIAN_CONFIG.USDC_DECIMALS,
   });
 }
 
-async function registerTickers(config: SetupConfig): Promise<void> {
+// ---------------------------------------------------------------------------
+// Step 3: Register Tickers
+// ---------------------------------------------------------------------------
+
+async function registerTickers(
+  program: any /* eslint-disable-line @typescript-eslint/no-explicit-any */,
+  admin: Keypair,
+): Promise<void> {
   log('3-register', 'Registering tickers');
 
+  const [configPda] = deriveConfigPda();
+
   for (const ticker of MERIDIAN_CONFIG.SUPPORTED_TICKERS) {
-    const feedId = PYTH_FEED_IDS[ticker];
+    const feedIdHex = PYTH_FEED_IDS[ticker];
+    const feedIdPubkey = new PublicKey(Buffer.from(feedIdHex, 'hex'));
+    const [tickerPda] = deriveTickerPda(ticker);
 
-    log('3-register', `Registering ${ticker}`, { ticker, feedId });
+    log('3-register', `Registering ${ticker}`, {
+      ticker,
+      feedId: feedIdHex,
+      tickerPda: tickerPda.toBase58(),
+    });
 
-    // TODO: Build and send register_ticker instruction
-    // const program = new Program(MeridianIDL, config.programId, provider);
-    // await program.methods.registerTicker(ticker, feedId).accounts({...}).rpc();
+    // Check if already registered
+    try {
+      const existing = await program.account['tickerConfig'].fetch(tickerPda);
+      if (existing) {
+        log('3-register', `Ticker already registered: ${ticker}`, {
+          tickerPda: tickerPda.toBase58(),
+        });
+        continue;
+      }
+    } catch {
+      // Not found, register
+    }
 
-    log('3-register', `Registered ${ticker} (stub)`, { ticker });
+    const tx = await program.methods
+      .registerTicker(ticker, feedIdPubkey)
+      .accountsStrict({
+        admin: admin.publicKey,
+        config: configPda,
+        tickerConfig: tickerPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([admin])
+      .rpc();
+
+    log('3-register', `Registered ${ticker}`, { signature: tx });
+    await sleep(MERIDIAN_CONFIG.INTER_TX_DELAY_MS);
   }
 
   log('3-register', `All ${MERIDIAN_CONFIG.SUPPORTED_TICKERS.length} tickers registered`);
 }
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
   log('start', '=== Meridian Devnet Setup ===');
@@ -120,9 +218,24 @@ async function main(): Promise<void> {
     airdropAmountSol: config.airdropAmountSol,
   });
 
-  await airdropSol(config);
-  await createUsdcAccounts(config);
-  await registerTickers(config);
+  const connection = new Connection(config.rpcUrl, 'confirmed');
+  const admin = loadKeypair(config.adminKeypairPath);
+  const wallet = new Wallet(admin);
+  const provider = createProvider(connection, wallet);
+  const program = createProgram(provider);
+
+  log('start', 'Admin wallet loaded', {
+    admin: admin.publicKey.toBase58(),
+  });
+
+  // Step 1: Airdrop SOL
+  await airdropSol(connection, admin, config.airdropAmountSol);
+
+  // Step 2: Create USDC token accounts
+  await createUsdcAccounts(connection, admin);
+
+  // Step 3: Register tickers
+  await registerTickers(program, admin);
 
   log('done', '=== Devnet setup complete ===', {
     tickersRegistered: MERIDIAN_CONFIG.SUPPORTED_TICKERS.length,
