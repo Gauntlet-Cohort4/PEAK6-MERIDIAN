@@ -11,6 +11,10 @@ import { MERIDIAN_CONFIG } from '@meridian/shared/constants';
 
 const NY_TZ = 'America/New_York';
 
+const IS_DEMO_MODE =
+  typeof process !== 'undefined' &&
+  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
+
 export type TimerStatus = 'trading' | 'settling' | 'closed';
 
 export interface SettlementTimerState {
@@ -65,6 +69,14 @@ function getNextOpenDate(now: Date): Date {
 }
 
 function computeState(now: Date): SettlementTimerState {
+  if (IS_DEMO_MODE) {
+    return {
+      timeString: 'Demo Mode — Market Open',
+      status: 'trading' as TimerStatus,
+      nextOpen: null,
+    };
+  }
+
   const isTradingDay = isNYSETradingDay(now);
 
   if (!isTradingDay) {

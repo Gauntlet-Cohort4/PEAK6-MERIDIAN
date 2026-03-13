@@ -44,12 +44,12 @@ export const SYSTEM_PROGRAM_ID = new PublicKey(
 
 /**
  * USDC mint address. Uses NEXT_PUBLIC_USDC_MINT env var if set,
- * otherwise defaults to mainnet USDC (Circle-issued).
+ * otherwise defaults to devnet USDC.
  */
 export const USDC_MINT = new PublicKey(
   typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_USDC_MINT']
     ? process.env['NEXT_PUBLIC_USDC_MINT']
-    : 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    : '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
 );
 
 // ── Program singleton ──────────────────────────────────────────────────
@@ -63,16 +63,16 @@ let _program: Program | null = null;
  * happens here — signing is deferred to the wallet adapter). We only need
  * the Program for `.methods.*.instruction()` calls.
  *
- * @param rpcUrl - Optional RPC URL override (defaults to mainnet-beta).
+ * @param rpcUrl - Optional RPC URL override (defaults to devnet).
  */
 export function getMeridianProgram(rpcUrl?: string): Program {
   if (_program !== null) {
     return _program;
   }
 
-  const defaultRpc = typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_RPC_URL']
-    ? process.env['NEXT_PUBLIC_RPC_URL']
-    : 'https://api.mainnet-beta.solana.com';
+  const defaultRpc = typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_SOLANA_RPC_URL']
+    ? process.env['NEXT_PUBLIC_SOLANA_RPC_URL']
+    : 'https://api.devnet.solana.com';
 
   const connection = new Connection(
     rpcUrl ?? defaultRpc,

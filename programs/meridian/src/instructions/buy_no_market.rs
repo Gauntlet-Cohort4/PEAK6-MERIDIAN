@@ -131,7 +131,7 @@ pub struct BuyNoMarket<'info> {
         seeds = [CONFIG_SEED],
         bump = config.bump,
     )]
-    pub config: Account<'info, MeridianConfig>,
+    pub config: Box<Account<'info, MeridianConfig>>,
 
     /// The strike market.
     #[account(
@@ -144,7 +144,7 @@ pub struct BuyNoMarket<'info> {
         ],
         bump = strike_market.bump,
     )]
-    pub strike_market: Account<'info, StrikeMarket>,
+    pub strike_market: Box<Account<'info, StrikeMarket>>,
 
     /// YES token mint.
     #[account(
@@ -152,7 +152,7 @@ pub struct BuyNoMarket<'info> {
         seeds = [YES_MINT_SEED, strike_market.key().as_ref()],
         bump,
     )]
-    pub yes_mint: Account<'info, Mint>,
+    pub yes_mint: Box<Account<'info, Mint>>,
 
     /// NO token mint.
     #[account(
@@ -160,15 +160,15 @@ pub struct BuyNoMarket<'info> {
         seeds = [NO_MINT_SEED, strike_market.key().as_ref()],
         bump,
     )]
-    pub no_mint: Account<'info, Mint>,
+    pub no_mint: Box<Account<'info, Mint>>,
 
     /// User's USDC token account.
     #[account(mut)]
-    pub user_usdc: Account<'info, TokenAccount>,
+    pub user_usdc: Box<Account<'info, TokenAccount>>,
 
     /// User's NO token account.
     #[account(mut)]
-    pub user_no: Account<'info, TokenAccount>,
+    pub user_no: Box<Account<'info, TokenAccount>>,
 
     /// PDA-owned YES token account (for Phoenix selling).
     #[account(
@@ -176,14 +176,14 @@ pub struct BuyNoMarket<'info> {
         token::mint = yes_mint,
         token::authority = strike_market,
     )]
-    pub pda_yes_account: Account<'info, TokenAccount>,
+    pub pda_yes_account: Box<Account<'info, TokenAccount>>,
 
     /// PDA-owned quote token account (receives USDC from Phoenix trade).
     #[account(
         mut,
         token::authority = strike_market,
     )]
-    pub pda_quote_account: Account<'info, TokenAccount>,
+    pub pda_quote_account: Box<Account<'info, TokenAccount>>,
 
     /// Market's USDC vault.
     #[account(
@@ -191,7 +191,7 @@ pub struct BuyNoMarket<'info> {
         seeds = [VAULT_SEED, strike_market.key().as_ref()],
         bump,
     )]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: Box<Account<'info, TokenAccount>>,
 
     /// Phoenix Legacy program.
     /// CHECK: Validated in adapter by comparing against known program ID.

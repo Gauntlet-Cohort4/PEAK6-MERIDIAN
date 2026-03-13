@@ -3,12 +3,17 @@ import { renderHook, act } from '@testing-library/react';
 import { useSettlementTimer } from '../../src/hooks/useSettlementTimer';
 
 describe('useSettlementTimer', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     vi.useFakeTimers();
+    process.env = { ...originalEnv };
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    process.env = originalEnv;
+    vi.resetModules();
   });
 
   it('returns trading status during market hours on a weekday', () => {
@@ -53,5 +58,20 @@ describe('useSettlementTimer', () => {
 
     // After 1 second, the timer should have updated
     expect(result.current.status).toBe('trading');
+  });
+
+  it('returns trading status with demo text when DEMO_MODE is true', async () => {
+    // Weekend — normally closed
+    vi.setSystemTime(new Date('2026-03-14T17:00:00Z'));
+    process.env['NEXT_PUBLIC_DEMO_MODE'] = 'true';
+    vi.resetModules();
+
+    const { useSettlementTimer: useDemoTimer } = await import(
+      '../../src/hooks/useSettlementTimer'
+    );
+    const { result } = renderHook(() => useDemoTimer());
+
+    expect(result.current.status).toBe('trading');
+    expect(result.current.timeString).toContain('Demo Mode');
   });
 });

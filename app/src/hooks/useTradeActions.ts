@@ -1,14 +1,23 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { Connection, Transaction, PublicKey } from '@solana/web3.js';
 import type { TradeOrder } from '@meridian/shared/types';
 import { TradeSide } from '@meridian/shared/types';
 import { MeridianError, MeridianErrorCode } from '@meridian/shared/errors';
+import { buildMintPairInstruction } from '@/lib/tx/mint-pair';
+import { buildRedeemInstruction } from '@/lib/tx/redeem';
 import { buildMintPairTransaction } from '@/lib/tx/mint-pair';
 import { buildBuyNoTransaction } from '@/lib/tx/buy-no';
 import { buildSellNoTransaction } from '@/lib/tx/sell-no';
 import { buildRedeemTransaction } from '@/lib/tx/redeem';
-import type { WalletConnection, BuildTransactionResult } from '@/lib/tx/types';
+import type { WalletConnection } from '@/lib/tx/types';
+
+/** Whether the app is running in demo mode (no real transactions). */
+const IS_DEMO_MODE =
+  typeof process !== 'undefined' &&
+  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
 
 export interface UseTradeActionsResult {
   readonly submitOrder: (order: TradeOrder) => Promise<string>;
@@ -18,33 +27,82 @@ export interface UseTradeActionsResult {
 }
 
 /**
- * Build the appropriate transaction based on the trade side.
+ * Get a Connection instance for the configured RPC endpoint.
  */
-function buildTransactionForOrder(
+function getConnection(): Connection {
+  const rpcUrl =
+    typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_SOLANA_RPC_URL']
+      ? process.env['NEXT_PUBLIC_SOLANA_RPC_URL']
+      : 'https://api.devnet.solana.com';
+
+  return new Connection(rpcUrl, 'confirmed');
+}
+
+/**
+ * Build the appropriate Anchor instruction for a trade order.
+ * Returns a real TransactionInstruction that can be added to a Transaction.
+ */
+async function buildInstructionForOrder(
   order: TradeOrder,
-  wallet: WalletConnection,
-): BuildTransactionResult {
+  walletPubkey: PublicKey,
+): Promise<import('@solana/web3.js').TransactionInstruction> {
   switch (order.side) {
     case TradeSide.BUY_YES:
-      return buildMintPairTransaction(
+      return buildMintPairInstruction(
+        { marketAddress: order.marketAddress, amount: order.size },
+        walletPubkey,
+      );
+    case TradeSide.SELL_YES:
+      return buildRedeemInstruction(
+        { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
+        walletPubkey,
+      );
+    // BUY_NO and SELL_NO require MarketAccounts (Phoenix market info) which
+    // are not yet available from the frontend. For now these fall through to
+    // an error. Once Phoenix market discovery is wired, add:
+    //   case TradeSide.BUY_NO: return buildBuyNoInstruction(...)
+    //   case TradeSide.SELL_NO: return buildSellNoInstruction(...)
+    default:
+      throw new MeridianError(
+        MeridianErrorCode.TRANSACTION_REJECTED,
+        `Trade side "${String(order.side)}" is not yet supported for on-chain submission`,
+      );
+  }
+}
+
+/**
+ * Build a stub transaction for demo mode preview.
+ * Uses the sync builders which produce unsigned stubs.
+ */
+function buildDemoTransactionForOrder(
+  order: TradeOrder,
+  wallet: WalletConnection,
+): void {
+  switch (order.side) {
+    case TradeSide.BUY_YES:
+      buildMintPairTransaction(
         { marketAddress: order.marketAddress, amount: order.size },
         wallet,
       );
+      break;
     case TradeSide.BUY_NO:
-      return buildBuyNoTransaction(
+      buildBuyNoTransaction(
         { marketAddress: order.marketAddress, maxUsdc: order.size * order.price },
         wallet,
       );
+      break;
     case TradeSide.SELL_NO:
-      return buildSellNoTransaction(
-        { marketAddress: order.marketAddress },
+      buildSellNoTransaction(
+        { marketAddress: order.marketAddress, amount: order.size },
         wallet,
       );
+      break;
     case TradeSide.SELL_YES:
-      return buildRedeemTransaction(
-        { marketAddress: order.marketAddress, tokenType: 'yes' },
+      buildRedeemTransaction(
+        { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
         wallet,
       );
+      break;
     default:
       throw new MeridianError(
         MeridianErrorCode.TRANSACTION_REJECTED,
@@ -55,12 +113,14 @@ function buildTransactionForOrder(
 
 /**
  * Hook for trade execution.
- * Builds transactions using tx builders and submits via wallet.
  *
- * TODO: Wire to actual wallet adapter and RPC submission once
- * @solana/wallet-adapter-react is installed.
+ * - When NEXT_PUBLIC_DEMO_MODE=true: produces fake signatures for UI preview
+ *   (no wallet connection required).
+ * - When NEXT_PUBLIC_DEMO_MODE=false (default): builds real Anchor instructions,
+ *   signs via the connected wallet adapter, and submits to the configured RPC.
  */
 export function useTradeActions(): UseTradeActionsResult {
+  const { publicKey, signTransaction, connected } = useWallet();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastTxSignature, setLastTxSignature] = useState<string | null>(null);
@@ -70,27 +130,73 @@ export function useTradeActions(): UseTradeActionsResult {
     setLastError(null);
 
     try {
-      // TODO: Get actual wallet from useWallet() hook
-      const stubWallet: WalletConnection = {
-        publicKey: order.traderPublicKey,
-        signTransaction: async (_tx) => ({
-          serialized: new Uint8Array([]),
-        }),
-      };
+      // ── Demo mode: fake signature, no wallet needed ──
+      if (IS_DEMO_MODE) {
+        const stubWallet: WalletConnection = {
+          publicKey: order.traderPublicKey,
+          signTransaction: async (_tx) => ({
+            serialized: new Uint8Array([]),
+          }),
+        };
 
-      const { transaction: _transaction } = buildTransactionForOrder(order, stubWallet);
+        // Run validation / account derivation but discard result
+        buildDemoTransactionForOrder(order, stubWallet);
 
-      // TODO: Submit signed transaction to RPC
-      // const signed = await stubWallet.signTransaction(transaction);
-      // const sig = await connection.sendRawTransaction(signed.serialized);
-      // await connection.confirmTransaction(sig);
+        // Simulate network latency
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const mockSig = `demo_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
-      // Simulate submission for now
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const mockSig = `tx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        setLastTxSignature(mockSig);
+        return mockSig;
+      }
 
-      setLastTxSignature(mockSig);
-      return mockSig;
+      // ── Real mode: sign and submit via wallet adapter ──
+      if (!connected || !publicKey) {
+        throw new MeridianError(
+          MeridianErrorCode.TRANSACTION_REJECTED,
+          'Wallet is not connected. Please connect your wallet to submit transactions.',
+        );
+      }
+
+      if (!signTransaction) {
+        throw new MeridianError(
+          MeridianErrorCode.TRANSACTION_REJECTED,
+          'Wallet does not support transaction signing. Please use a compatible wallet.',
+        );
+      }
+
+      const connection = getConnection();
+
+      // Build the real Anchor instruction
+      const instruction = await buildInstructionForOrder(order, publicKey);
+
+      // Create a transaction with the instruction
+      const transaction = new Transaction();
+      transaction.add(instruction);
+
+      // Fetch a recent blockhash
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash('confirmed');
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
+
+      // Sign via the wallet adapter
+      const signed = await signTransaction(transaction);
+
+      // Send the signed transaction
+      const signature = await connection.sendRawTransaction(signed.serialize(), {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed',
+      });
+
+      // Confirm the transaction
+      await connection.confirmTransaction(
+        { signature, blockhash, lastValidBlockHeight },
+        'confirmed',
+      );
+
+      setLastTxSignature(signature);
+      return signature;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setLastError(message);
@@ -98,7 +204,7 @@ export function useTradeActions(): UseTradeActionsResult {
     } finally {
       setIsSubmitting(false);
     }
-  }, []);
+  }, [connected, publicKey, signTransaction]);
 
   return { submitOrder, isSubmitting, lastError, lastTxSignature };
 }

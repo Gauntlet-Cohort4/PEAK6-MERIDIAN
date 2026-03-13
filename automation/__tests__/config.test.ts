@@ -8,7 +8,7 @@ import { loadConfig } from '../src/config.js';
 /** Minimal valid environment for config loading. */
 function validEnv(): Record<string, string> {
   return {
-    SOLANA_RPC_URL: 'https://api.mainnet-beta.solana.com',
+    SOLANA_RPC_URL: 'https://api.devnet.solana.com',
     FINNHUB_API_KEY: 'test-finnhub-key',
     ADMIN_KEYPAIR_PATH: '/path/to/keypair.json',
     PROGRAM_ID: 'MeridianProgram111111111111111111111111111',
@@ -19,7 +19,7 @@ describe('loadConfig', () => {
   it('should load config with all required vars', () => {
     const config = loadConfig(validEnv());
 
-    expect(config.solanaRpcUrl).toBe('https://api.mainnet-beta.solana.com');
+    expect(config.solanaRpcUrl).toBe('https://api.devnet.solana.com');
     expect(config.finnhubApiKey).toBe('test-finnhub-key');
     expect(config.adminKeypairPath).toBe('/path/to/keypair.json');
     expect(config.programId).toBe('MeridianProgram111111111111111111111111111');
