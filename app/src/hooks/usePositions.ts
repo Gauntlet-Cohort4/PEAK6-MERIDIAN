@@ -81,14 +81,20 @@ export function usePositions(): UsePositionsResult {
   const { state: demoState } = useDemoState();
 
   useEffect(() => {
-    // Demo mode or no wallet — use demo state
-    if (IS_DEMO_MODE || !publicKey) {
-      const timer = setTimeout(() => {
-        setPositions(demoState.positions);
-        setIsLoading(false);
-        setError(null);
-      }, 300);
-      return () => clearTimeout(timer);
+    // Demo mode — use mutable demo state
+    if (IS_DEMO_MODE) {
+      setPositions(demoState.positions);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    // No wallet connected — show empty positions
+    if (!publicKey) {
+      setPositions([]);
+      setIsLoading(false);
+      setError(null);
+      return;
     }
 
     // No markets loaded yet — wait

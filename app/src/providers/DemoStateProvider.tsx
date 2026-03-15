@@ -27,11 +27,11 @@ interface DemoState {
 }
 
 interface DemoActions {
-  /** Force-settle a market with a given settlement price. */
+  /** Force-settle a market with a given settlement price.
+   *  YES wins when settlementPrice >= strikePrice, NO wins otherwise. */
   readonly settleMarket: (
     marketAddress: string,
     settlementPrice: number,
-    yesWins: boolean,
   ) => void;
   /** Reopen a settled market (undo settle for re-testing). */
   readonly reopenMarket: (marketAddress: string) => void;
@@ -79,7 +79,8 @@ export function DemoStateProvider({ children }: { readonly children: ReactNode }
   const [state, setState] = useState<DemoState>(initialState);
 
   const settleMarket = useCallback(
-    (marketAddress: string, settlementPrice: number, yesWins: boolean) => {
+    (marketAddress: string, settlementPrice: number) => {
+      const settledAt = Date.now();
       setState((prev) => ({
         ...prev,
         markets: prev.markets.map((m) =>
@@ -88,7 +89,7 @@ export function DemoStateProvider({ children }: { readonly children: ReactNode }
                 ...m,
                 status: MarketStatus.SETTLED,
                 settlementPrice,
-                settledAt: Date.now(),
+                settledAt,
               }
             : m,
         ),

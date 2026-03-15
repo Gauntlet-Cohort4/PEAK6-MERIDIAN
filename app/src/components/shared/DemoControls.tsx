@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useDemoState } from '@/providers/DemoStateProvider';
 import { MarketStatus } from '@meridian/shared/types';
 import type { StrikeMarket } from '@meridian/shared/types';
@@ -22,22 +22,28 @@ interface DemoMarketControlsProps {
 }
 
 export function DemoMarketControls({ market }: DemoMarketControlsProps) {
-  if (!IS_DEMO_MODE) return null;
-
+  // All hooks MUST be called before any early returns (Rules of Hooks)
   const { actions } = useDemoState();
   const [settlementPrice, setSettlementPrice] = useState('');
 
-  const parsedPrice = parseFloat(settlementPrice);
-  const isValidPrice = !isNaN(parsedPrice) && parsedPrice > 0;
+  const parsedPrice = useMemo(() => parseFloat(settlementPrice), [settlementPrice]);
+  const isValidPrice = !isNaN(parsedPrice) && parsedPrice > 0 && isFinite(parsedPrice);
 
-  const handleSettle = useCallback(
-    (yesWins: boolean) => {
-      if (!isValidPrice) return;
-      actions.settleMarket(market.address, parsedPrice, yesWins);
-      setSettlementPrice('');
-    },
-    [actions, market.address, parsedPrice, isValidPrice],
-  );
+  const handleSettleYes = useCallback(() => {
+    if (!isValidPrice) return;
+    // Settle with price >= strike so YES wins
+    const price = Math.max(parsedPrice, market.strikePrice);
+    actions.settleMarket(market.address, price);
+    setSettlementPrice('');
+  }, [actions, market.address, market.strikePrice, parsedPrice, isValidPrice]);
+
+  const handleSettleNo = useCallback(() => {
+    if (!isValidPrice) return;
+    // Settle with price < strike so NO wins
+    const price = Math.min(parsedPrice, market.strikePrice - 0.01);
+    actions.settleMarket(market.address, price);
+    setSettlementPrice('');
+  }, [actions, market.address, market.strikePrice, parsedPrice, isValidPrice]);
 
   const handleReopen = useCallback(() => {
     actions.reopenMarket(market.address);
@@ -46,6 +52,8 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
   const handleMintPair = useCallback(() => {
     actions.addPosition(market.address, 10, 10);
   }, [actions, market.address]);
+
+  if (!IS_DEMO_MODE) return null;
 
   if (market.status === MarketStatus.SETTLED) {
     return (
@@ -104,7 +112,7 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
             variant="yes"
             size="sm"
             disabled={!isValidPrice}
-            onClick={() => handleSettle(true)}
+            onClick={handleSettleYes}
           >
             Settle YES
           </Button>
@@ -112,7 +120,7 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
             variant="no"
             size="sm"
             disabled={!isValidPrice}
-            onClick={() => handleSettle(false)}
+            onClick={handleSettleNo}
           >
             Settle NO
           </Button>
@@ -134,9 +142,10 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
 // ---------------------------------------------------------------------------
 
 export function DemoToolbar() {
-  if (!IS_DEMO_MODE) return null;
-
+  // Hook must be called before early return (Rules of Hooks)
   const { actions } = useDemoState();
+
+  if (!IS_DEMO_MODE) return null;
 
   return (
     <Button
