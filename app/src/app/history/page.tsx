@@ -44,8 +44,13 @@ function HistoryRow({ entry }: { readonly entry: TradeHistoryEntry }) {
             {formatTimestamp(entry.timestamp)}
           </span>
           {isDemoTx ? (
-            <span className="font-mono text-xs text-muted-foreground">
-              {shortenSignature(entry.signature)}
+            <span className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-500/30">
+                Demo
+              </Badge>
+              <span className="font-mono text-xs text-muted-foreground">
+                {shortenSignature(entry.signature)}
+              </span>
             </span>
           ) : (
             <a
