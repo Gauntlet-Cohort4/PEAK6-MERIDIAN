@@ -81,9 +81,14 @@ async function airdropSol(
   });
 
   const balanceBefore = await connection.getBalance(admin.publicKey);
-  log('1-airdrop', 'Balance before airdrop', {
-    balanceSol: balanceBefore / LAMPORTS_PER_SOL,
-  });
+  const balanceSol = balanceBefore / LAMPORTS_PER_SOL;
+  log('1-airdrop', 'Current balance', { balanceSol });
+
+  // Skip airdrop if balance is already sufficient (> 2 SOL)
+  if (balanceSol >= 2) {
+    log('1-airdrop', 'Balance sufficient, skipping airdrop', { balanceSol });
+    return;
+  }
 
   // Airdrop in chunks (devnet has a 2 SOL per-request limit)
   const chunkSize = Math.min(amountSol, 2);
@@ -91,8 +96,14 @@ async function airdropSol(
 
   for (let i = 0; i < chunks; i++) {
     const lamports = chunkSize * LAMPORTS_PER_SOL;
-    const sig = await airdropAndConfirm(connection, admin.publicKey, lamports);
-    log('1-airdrop', `Airdrop chunk ${i + 1}/${chunks} confirmed`, { signature: sig });
+    try {
+      const sig = await airdropAndConfirm(connection, admin.publicKey, lamports);
+      log('1-airdrop', `Airdrop chunk ${i + 1}/${chunks} confirmed`, { signature: sig });
+    } catch (err) {
+      log('1-airdrop', `Airdrop chunk ${i + 1}/${chunks} failed (non-fatal)`, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
 
     if (i < chunks - 1) {
       await sleep(1000); // Rate limit
