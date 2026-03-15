@@ -2,7 +2,7 @@
 
 import { use, useMemo } from 'react';
 import { useMarkets } from '@/hooks/useMarkets';
-import { MOCK_ORDER_BOOKS } from '@/lib/mock-data';
+import { useOrderBooks } from '@/hooks/useOrderBooks';
 import { usePositions } from '@/hooks/usePositions';
 import { OrderBook } from '@/components/trade/OrderBook';
 import { TradePanel } from '@/components/trade/TradePanel';
@@ -10,6 +10,7 @@ import { PriceDisplay } from '@/components/shared/PriceDisplay';
 import { Badge } from '@/components/ui/badge';
 import { formatUSD } from '@/lib/format';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { SettlementTimer } from '@/components/shared/SettlementTimer';
 
 interface TradePageProps {
   readonly params: Promise<{ readonly marketId: string }>;
@@ -25,10 +26,13 @@ export default function TradePage({ params }: TradePageProps) {
     [markets, marketId],
   );
 
-  const orderBook = useMemo(
-    () => MOCK_ORDER_BOOKS[marketId] ?? null,
-    [marketId],
+  const marketAddresses = useMemo(
+    () => (market ? [market.address] : []),
+    [market],
   );
+
+  const { orderBooks } = useOrderBooks(marketAddresses);
+  const orderBook = orderBooks[marketId] ?? null;
 
   const position = market ? getPosition(market.address) : null;
 
@@ -60,6 +64,7 @@ export default function TradePage({ params }: TradePageProps) {
           <span>
             Live: <PriceDisplay ticker={market.ticker} />
           </span>
+          <SettlementTimer />
         </div>
       </div>
 

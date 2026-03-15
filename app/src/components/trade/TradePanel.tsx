@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { TradeSide } from '@meridian/shared/types';
 import type { StrikeMarket, Position, TradeOrder } from '@meridian/shared/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -12,6 +13,11 @@ import { TradeConfirmation } from './TradeConfirmation';
 import { useTradeActions } from '@/hooks/useTradeActions';
 import { useTradeConfirmation } from '@/hooks/useTradeConfirmation';
 import { isTradeSideAllowed } from '@/lib/position-constraints';
+
+/** Whether the app is running in demo mode (no real transactions). */
+const IS_DEMO_MODE =
+  typeof process !== 'undefined' &&
+  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
 
 interface TradePanelProps {
   readonly market: StrikeMarket;
@@ -31,6 +37,7 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
   const [size, setSize] = useState('');
   const [price, setPrice] = useState(defaultPrice.toFixed(2));
   const { submitOrder, isSubmitting } = useTradeActions();
+  const { publicKey: walletPublicKey } = useWallet();
 
   const parsedSize = useMemo(() => {
     const n = parseFloat(size);
@@ -43,7 +50,7 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
   }, [price]);
 
   const isAllowed = isTradeSideAllowed(selectedSide, position);
-  const canSubmit = parsedSize > 0 && parsedPrice > 0 && isAllowed && !isSubmitting;
+  const canSubmit = parsedSize > 0 && parsedPrice > 0 && isAllowed && !isSubmitting && (IS_DEMO_MODE || !!walletPublicKey);
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
@@ -53,12 +60,12 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
       side: selectedSide,
       size: parsedSize,
       price: parsedPrice,
-      traderPublicKey: '11111111111111111111111111111111',
+      traderPublicKey: walletPublicKey?.toBase58() ?? '',
     };
 
     await submitOrder(order);
     setSize('');
-  }, [canSubmit, market.address, selectedSide, parsedSize, parsedPrice, submitOrder]);
+  }, [canSubmit, market.address, selectedSide, parsedSize, parsedPrice, walletPublicKey, submitOrder]);
 
   const confirmation = useTradeConfirmation(handleSubmit);
 
@@ -91,6 +98,17 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
           <TabsContent key={tab.value} value={tab.value}>
             <div className="space-y-4 pt-2">
               <PositionConstraints position={position} selectedSide={tab.value} />
+
+              {!IS_DEMO_MODE && (tab.value === TradeSide.BUY_NO || tab.value === TradeSide.SELL_NO) && (
+                <div className="p-3 rounded-lg border border-yellow-500/50 bg-yellow-500/5 text-sm">
+                  <p className="font-medium text-yellow-600">Phoenix Order Book Pending</p>
+                  <p className="text-muted-foreground mt-1">
+                    {tab.value === TradeSide.BUY_NO
+                      ? 'Buy No requires selling YES on Phoenix. Use Mint Pair (Buy Yes tab) to get both tokens.'
+                      : 'Sell No requires buying YES on Phoenix. Use Redeem (Sell Yes tab) after settlement.'}
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Contracts</label>

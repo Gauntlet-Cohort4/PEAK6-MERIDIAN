@@ -55,15 +55,25 @@ async function buildInstructionForOrder(
         { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
         walletPubkey,
       );
-    // BUY_NO and SELL_NO require MarketAccounts (Phoenix market info) which
-    // are not yet available from the frontend. For now these fall through to
-    // an error. Once Phoenix market discovery is wired, add:
-    //   case TradeSide.BUY_NO: return buildBuyNoInstruction(...)
-    //   case TradeSide.SELL_NO: return buildSellNoInstruction(...)
+    case TradeSide.BUY_NO:
+      // BUY_NO requires Phoenix market accounts for the composite
+      // mint-pair + sell-YES-on-Phoenix instruction.
+      // When Phoenix markets are available, this will use buildBuyNoInstruction().
+      throw new MeridianError(
+        MeridianErrorCode.TRANSACTION_REJECTED,
+        'Buy No requires an active Phoenix order book. Phoenix market integration is pending. Use "Buy Yes" (mint pair) for now.',
+      );
+    case TradeSide.SELL_NO:
+      // SELL_NO requires Phoenix market accounts for the composite
+      // buy-YES-on-Phoenix + burn-pair instruction.
+      throw new MeridianError(
+        MeridianErrorCode.TRANSACTION_REJECTED,
+        'Sell No requires an active Phoenix order book. Phoenix market integration is pending. Use "Sell Yes" (redeem) for now.',
+      );
     default:
       throw new MeridianError(
         MeridianErrorCode.TRANSACTION_REJECTED,
-        `Trade side "${String(order.side)}" is not yet supported for on-chain submission`,
+        `Trade side "${String(order.side)}" is not supported`,
       );
   }
 }
