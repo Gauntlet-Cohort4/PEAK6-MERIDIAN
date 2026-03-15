@@ -43,6 +43,10 @@ const configSchema = z.object({
   cronSettlementSchedule: z
     .string()
     .default('5 16 * * 1-5'),
+  alertWebhookUrl: z
+    .string()
+    .url()
+    .optional(),
 });
 
 /** Validated automation configuration. */
@@ -74,6 +78,7 @@ export function loadConfig(
     demoMode: parseBoolEnv(env['DEMO_MODE']),
     cronMorningSchedule: env['CRON_MORNING_SCHEDULE'],
     cronSettlementSchedule: env['CRON_SETTLEMENT_SCHEDULE'],
+    alertWebhookUrl: env['MERIDIAN_ALERT_WEBHOOK_URL'] || undefined,
   };
 
   const result = configSchema.safeParse(raw);

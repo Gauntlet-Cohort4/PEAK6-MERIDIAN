@@ -6,6 +6,7 @@
 
 import type { PriceServiceAdapter, TradingDayAdapter } from '@meridian/shared/adapters/types.js';
 import type { MeridianClient } from '../services/meridian-client.js';
+import type { AlertService } from '../services/alert-service.js';
 import type { ActiveMarket } from '../types/active-market.js';
 import { MERIDIAN_CONFIG, PYTH_FEED_IDS, type SupportedTicker } from '@meridian/shared/constants.js';
 import { Logger } from '@meridian/shared/logger.js';
@@ -26,6 +27,7 @@ export interface SettlementJobDeps {
   readonly priceService: PriceServiceAdapter;
   readonly tradingDayService: TradingDayAdapter;
   readonly meridianClient: MeridianClient;
+  readonly alertService: AlertService;
 }
 
 /** Summary of the settlement job execution. */
@@ -110,6 +112,14 @@ async function settleMarket(
         ticker: market.ticker,
         marketAddress: market.marketAddress,
       },
+    });
+
+    // Alert admin for manual override
+    await deps.alertService.sendAlert('critical', 'Oracle Settlement Failed', {
+      marketAddress: market.marketAddress,
+      ticker: market.ticker,
+      attempts: SETTLEMENT_MAX_ATTEMPTS,
+      lastError: errorMsg,
     });
 
     return { settled: false, adminScheduled: true, error: errorMsg };

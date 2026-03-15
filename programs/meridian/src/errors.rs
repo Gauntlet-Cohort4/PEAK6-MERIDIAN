@@ -90,4 +90,9 @@ pub enum MeridianError {
     /// The program is not paused (relevant for unpause).
     #[msg("Program not paused")]
     ProgramNotPaused,
+
+    /// Vault balance does not match the expected invariant:
+    /// balance == (total_pairs_minted - total_pairs_redeemed) * PAIR_COST.
+    #[msg("Vault invariant violation")]
+    VaultInvariantViolation,
 }

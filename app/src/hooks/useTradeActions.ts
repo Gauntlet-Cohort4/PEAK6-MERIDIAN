@@ -8,9 +8,14 @@ import { TradeSide } from '@meridian/shared/types';
 import { MeridianError, MeridianErrorCode } from '@meridian/shared/errors';
 import { buildMintPairInstruction, buildMintPairTransaction } from '@/lib/tx/mint-pair';
 import { buildRedeemInstruction, buildRedeemTransaction } from '@/lib/tx/redeem';
-import { buildBuyNoTransaction } from '@/lib/tx/buy-no';
-import { buildSellNoTransaction } from '@/lib/tx/sell-no';
-import type { WalletConnection } from '@/lib/tx/types';
+import { buildBuyNoTransaction, buildBuyNoInstruction } from '@/lib/tx/buy-no';
+import { buildSellNoTransaction, buildSellNoInstruction } from '@/lib/tx/sell-no';
+import {
+  deriveYesMintPda,
+  deriveAta,
+  USDC_MINT,
+} from '@/lib/tx/program';
+import type { MarketAccounts, WalletConnection } from '@/lib/tx/types';
 import { IS_DEMO_MODE } from '@/lib/demo';
 
 export interface UseTradeActionsResult {
@@ -30,6 +35,29 @@ function getConnection(): Connection {
       : 'https://api.devnet.solana.com';
 
   return new Connection(rpcUrl, 'confirmed');
+}
+
+/**
+ * Derive default MarketAccounts for a given strike market address.
+ *
+ * Phoenix-specific accounts (phoenixMarket, phoenixBaseVault, phoenixQuoteVault)
+ * are set to PublicKey.default. If the on-chain program requires a real Phoenix
+ * market, the transaction will fail on-chain — which is the correct behavior
+ * rather than blocking in the frontend.
+ */
+function deriveDefaultMarketAccounts(marketAddress: string): MarketAccounts {
+  const strikeMarket = new PublicKey(marketAddress);
+  const [yesMint] = deriveYesMintPda(strikeMarket);
+
+  return {
+    strikeMarket,
+    usdcMint: USDC_MINT,
+    phoenixMarket: PublicKey.default,
+    phoenixBaseVault: PublicKey.default,
+    phoenixQuoteVault: PublicKey.default,
+    pdaYesAccount: deriveAta(strikeMarket, yesMint),
+    pdaQuoteAccount: deriveAta(strikeMarket, USDC_MINT),
+  };
 }
 
 /**
@@ -61,21 +89,28 @@ async function buildInstructionForOrder(
         { marketAddress: order.marketAddress, tokenType: 'no', amount: order.size },
         walletPubkey,
       );
-    case TradeSide.BUY_NO:
-      // BUY_NO requires Phoenix market accounts for the composite
-      // mint-pair + sell-YES-on-Phoenix instruction.
-      // When Phoenix markets are available, this will use buildBuyNoInstruction().
-      throw new MeridianError(
-        MeridianErrorCode.TRANSACTION_REJECTED,
-        'Buy No requires an active Phoenix order book. Phoenix market integration is pending. Use "Buy Yes" (mint pair) for now.',
+    case TradeSide.BUY_NO: {
+      const buyNoAccounts = deriveDefaultMarketAccounts(order.marketAddress);
+      console.warn(
+        'Buy No: Phoenix market accounts are using defaults. Transaction may fail if no Phoenix market exists for this strike.',
       );
-    case TradeSide.SELL_NO:
-      // SELL_NO requires Phoenix market accounts for the composite
-      // buy-YES-on-Phoenix + burn-pair instruction.
-      throw new MeridianError(
-        MeridianErrorCode.TRANSACTION_REJECTED,
-        'Sell No requires an active Phoenix order book. Phoenix market integration is pending. Use "Sell Yes" (redeem) for now.',
+      return buildBuyNoInstruction(
+        { marketAddress: order.marketAddress, maxUsdc: order.size * order.price },
+        walletPubkey,
+        buyNoAccounts,
       );
+    }
+    case TradeSide.SELL_NO: {
+      const sellNoAccounts = deriveDefaultMarketAccounts(order.marketAddress);
+      console.warn(
+        'Sell No: Phoenix market accounts are using defaults. Transaction may fail if no Phoenix market exists for this strike.',
+      );
+      return buildSellNoInstruction(
+        { marketAddress: order.marketAddress, amount: order.size },
+        walletPubkey,
+        sellNoAccounts,
+      );
+    }
     default:
       throw new MeridianError(
         MeridianErrorCode.TRANSACTION_REJECTED,

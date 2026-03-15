@@ -48,6 +48,21 @@ pub fn handler(ctx: Context<MintPair>, amount: u64) -> Result<()> {
         .checked_add(amount)
         .ok_or(MeridianError::ArithmeticOverflow)?;
 
+    // Verify vault invariant: vault balance == (total_minted - total_redeemed) * PAIR_COST.
+    let outstanding = market_mut.total_pairs_minted
+        .checked_sub(market_mut.total_pairs_redeemed)
+        .ok_or(MeridianError::ArithmeticOverflow)?;
+    let expected_balance = outstanding
+        .checked_mul(PAIR_COST_LAMPORTS)
+        .ok_or(MeridianError::ArithmeticOverflow)?;
+    // Reload vault to get post-CPI balance (Anchor caches at instruction decode time).
+    ctx.accounts.vault.reload()?;
+    let actual_balance = ctx.accounts.vault.amount;
+    require!(
+        actual_balance == expected_balance,
+        MeridianError::VaultInvariantViolation
+    );
+
     emit!(PairMinted {
         market: market_mut.key(),
         user: ctx.accounts.user.key(),

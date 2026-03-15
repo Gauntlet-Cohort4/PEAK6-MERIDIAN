@@ -1,4 +1,4 @@
-.PHONY: install build build-program build-frontend test test-contract test-automation test-frontend test-integration lint format clean deploy-devnet demo deploy setup-devnet
+.PHONY: install build build-program build-frontend test test-contract test-automation test-frontend test-integration lint format clean deploy-devnet demo deploy setup-devnet dev start phoenix-markets
 
 install:
 	npm install
@@ -48,3 +48,13 @@ deploy:
 
 setup-devnet:
 	npx ts-node scripts/setup-devnet.ts
+
+dev: install build setup-devnet
+	@echo "Development environment ready!"
+	@echo "Run 'make demo' for demo mode, or 'make start' for real mode"
+
+start:
+	cd app && npm run dev
+
+phoenix-markets:
+	npx ts-node scripts/create-phoenix-markets.ts

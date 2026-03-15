@@ -8,25 +8,30 @@ use crate::errors::MeridianError;
 /// Phoenix Legacy program ID, parsed at compile time.
 const PHOENIX_PROGRAM_ID: Pubkey = pubkey!("PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY");
 
-/// Phoenix Legacy instruction discriminators.
+/// Phoenix Legacy (V1) instruction discriminators.
 ///
-/// # Safety
+/// Phoenix V1 uses borsh-serialized enum variants, where the discriminator
+/// is a single byte representing the enum variant index of `PhoenixInstruction`.
 ///
-/// These discriminators are PLACEHOLDER values derived from analysis of the
-/// Phoenix Legacy program. They MUST be verified against the actual Phoenix
-/// Legacy IDL before any mainnet deployment. Phase 5 integration testing
-/// with Surfpool will validate these against the real Phoenix Legacy program.
-///
-/// The correct approach for production:
-/// 1. Fetch the Phoenix Legacy IDL from on-chain
-/// 2. Compute discriminators as sha256("global:<instruction_name>")[0..8]
-/// 3. Replace the hardcoded values below
-/// 4. Run integration tests against Surfpool with the real Phoenix program
+/// Variant indices:
+///   0: InitializeMarket
+///   1: PlaceLimitOrder
+///   2: ReduceOrder
+///   3: CancelAllOrders
+///   4: CancelUpTo
+///   5: CancelMultipleOrders
+///   6: PlaceMultiplePostOnlyOrders
+///   7: Swap (IOC market order)
+///   8: SwapWithFreeFunds
+///   9: PlaceLimitOrderWithFreeFunds
+///  10: ReduceOrderWithFreeFunds
 mod discriminators {
-    /// `new_order` instruction discriminator.
-    pub const NEW_ORDER: [u8; 8] = [0x99, 0x1e, 0x56, 0x3b, 0x35, 0x6a, 0x08, 0x01];
-    /// `cancel_all_orders` instruction discriminator.
-    pub const CANCEL_ALL: [u8; 8] = [0xa4, 0x5d, 0x2e, 0xb4, 0x7c, 0x18, 0x03, 0x02];
+    /// `PlaceLimitOrder` instruction discriminator (variant index 1).
+    pub const PLACE_LIMIT_ORDER: u8 = 1;
+    /// `Swap` (IOC market order) instruction discriminator (variant index 7).
+    pub const SWAP: u8 = 7;
+    /// `CancelAllOrders` instruction discriminator (variant index 3).
+    pub const CANCEL_ALL_ORDERS: u8 = 3;
 }
 
 /// Phoenix order-type raw values for the instruction data.
@@ -67,41 +72,56 @@ pub struct PhoenixLegacyAdapter<'a, 'info> {
 }
 
 impl<'a, 'info> PhoenixLegacyAdapter<'a, 'info> {
-    /// Builds the instruction data for a Phoenix `new_order` CPI.
+    /// Builds the instruction data for a Phoenix order CPI.
     ///
-    /// Layout (Phoenix Legacy new_order):
-    ///   [0..8]   discriminator
-    ///   [8]      side (0=bid, 1=ask)
-    ///   [9]      order_type (0=limit, 1=IOC, 2=post_only)
-    ///   [10..18] price_in_ticks (u64 LE)
-    ///   [18..26] size_in_base_lots (u64 LE)
+    /// Phoenix V1 uses borsh-serialized enums. The first byte is the variant
+    /// index, followed by variant-specific data.
     ///
-    /// TODO: Validate this layout against the Phoenix Legacy IDL
-    /// during Phase 5 integration testing.
+    /// For `PlaceLimitOrder` (variant 1):
+    ///   [0]      discriminator (1)
+    ///   [1..9]   price_in_ticks (u64 LE)
+    ///   [9..17]  num_base_lots (u64 LE)
+    ///   [17]     order_type (0=Limit, 1=ImmediateOrCancel, 2=PostOnly)
+    ///   [18]     side (0=Bid, 1=Ask)
+    ///
+    /// For `Swap` / IOC market order (variant 7):
+    ///   [0]      discriminator (7)
+    ///   [1..9]   price_in_ticks (u64 LE)
+    ///   [9..17]  num_base_lots (u64 LE)
+    ///   [17]     side (0=Bid, 1=Ask)
     fn build_new_order_data(params: &OrderParams) -> Vec<u8> {
-        let mut data = Vec::with_capacity(26);
-        data.extend_from_slice(&discriminators::NEW_ORDER);
-
         let side_byte = match params.side {
             OrderSide::Bid => phoenix_side::BID,
             OrderSide::Ask => phoenix_side::ASK,
         };
-        data.push(side_byte);
 
-        let order_type_byte = match params.order_type {
-            OrderType::Market => phoenix_order_type::IOC,
-            OrderType::Limit => phoenix_order_type::LIMIT,
-        };
-        data.push(order_type_byte);
-
-        data.extend_from_slice(&params.price_in_ticks.to_le_bytes());
-        data.extend_from_slice(&params.size_in_base_lots.to_le_bytes());
-        data
+        match params.order_type {
+            OrderType::Limit => {
+                let mut data = Vec::with_capacity(19);
+                data.push(discriminators::PLACE_LIMIT_ORDER);
+                data.extend_from_slice(&params.price_in_ticks.to_le_bytes());
+                data.extend_from_slice(&params.size_in_base_lots.to_le_bytes());
+                data.push(phoenix_order_type::LIMIT);
+                data.push(side_byte);
+                data
+            }
+            OrderType::Market => {
+                let mut data = Vec::with_capacity(18);
+                data.push(discriminators::SWAP);
+                data.extend_from_slice(&params.price_in_ticks.to_le_bytes());
+                data.extend_from_slice(&params.size_in_base_lots.to_le_bytes());
+                data.push(side_byte);
+                data
+            }
+        }
     }
 
     /// Builds the instruction data for a Phoenix `cancel_all_orders` CPI.
+    ///
+    /// Phoenix V1 `CancelAllOrders` (variant 3) takes no additional data
+    /// beyond the single-byte discriminator.
     fn build_cancel_all_data() -> Vec<u8> {
-        discriminators::CANCEL_ALL.to_vec()
+        vec![discriminators::CANCEL_ALL_ORDERS]
     }
 
     /// Returns the Phoenix program Pubkey (compile-time constant).

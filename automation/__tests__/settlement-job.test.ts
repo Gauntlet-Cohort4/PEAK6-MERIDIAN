@@ -11,6 +11,7 @@ import {
 import type { PriceServiceAdapter, TradingDayAdapter } from '@meridian/shared/adapters/types.js';
 import type { PriceData } from '@meridian/shared/types.js';
 import type { MeridianClient } from '../src/services/meridian-client.js';
+import type { AlertService } from '../src/services/alert-service.js';
 
 function createMockPriceData(price: number): PriceData {
   return Object.freeze({
@@ -42,10 +43,15 @@ function createMockDeps(overrides?: Partial<SettlementJobDeps>): SettlementJobDe
     getActiveMarkets: vi.fn().mockResolvedValue([]),
   };
 
+  const alertService: AlertService = {
+    sendAlert: vi.fn().mockResolvedValue(undefined),
+  };
+
   return {
     priceService: overrides?.priceService ?? priceService,
     tradingDayService: overrides?.tradingDayService ?? tradingDayService,
     meridianClient: overrides?.meridianClient ?? meridianClient,
+    alertService: overrides?.alertService ?? alertService,
   };
 }
 

@@ -24,6 +24,7 @@ import {
 } from './services/meridian-client.js';
 import { runMorningJob, type MorningJobDeps } from './jobs/morning-job.js';
 import { runSettlementJob, type SettlementJobDeps } from './jobs/settlement-job.js';
+import { createAlertService } from './services/alert-service.js';
 import { Logger } from '@meridian/shared/logger.js';
 
 const logger = new Logger('automation');
@@ -95,8 +96,9 @@ function buildDeps(config: AutomationConfig): MorningJobDeps & SettlementJobDeps
     : createTradingDayService({ finnhubApiKey: config.finnhubApiKey });
 
   const meridianClient = buildMeridianClient(config);
+  const alertService = createAlertService(config.alertWebhookUrl);
 
-  return { priceService, tradingDayService, meridianClient };
+  return { priceService, tradingDayService, meridianClient, alertService };
 }
 
 /**
@@ -115,6 +117,7 @@ async function runOneShot(config: AutomationConfig): Promise<void> {
 
 /**
  * Run in cron mode: schedule jobs according to configured schedules.
+ * Registers graceful shutdown handlers for SIGTERM and SIGINT.
  */
 function runCronMode(config: AutomationConfig): void {
   const deps = buildDeps(config);
@@ -123,7 +126,7 @@ function runCronMode(config: AutomationConfig): void {
     context: { schedule: config.cronMorningSchedule, timezone: 'America/New_York' },
   });
 
-  cron.schedule(
+  const morningTask = cron.schedule(
     config.cronMorningSchedule,
     async () => {
       try {
@@ -139,7 +142,7 @@ function runCronMode(config: AutomationConfig): void {
     context: { schedule: config.cronSettlementSchedule, timezone: 'America/New_York' },
   });
 
-  cron.schedule(
+  const settlementTask = cron.schedule(
     config.cronSettlementSchedule,
     async () => {
       try {
@@ -150,6 +153,18 @@ function runCronMode(config: AutomationConfig): void {
     },
     { timezone: 'America/New_York' },
   );
+
+  // Graceful shutdown: stop cron tasks on SIGTERM/SIGINT
+  const shutdown = (signal: string): void => {
+    logger.info('shutdown', `Received ${signal}, stopping cron jobs...`);
+    morningTask.stop();
+    settlementTask.stop();
+    logger.info('shutdown', 'Cron jobs stopped, exiting');
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 
   logger.info('cron', 'Automation service started in cron mode');
 }

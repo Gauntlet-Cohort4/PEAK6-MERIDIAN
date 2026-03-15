@@ -30,6 +30,7 @@ const TRADE_TABS: readonly { readonly value: TradeSide; readonly label: string }
 
 export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelProps) {
   const [selectedSide, setSelectedSide] = useState<TradeSide>(TradeSide.BUY_YES);
+  const [orderType, setOrderType] = useState<'market' | 'limit'>('limit');
   const [size, setSize] = useState('');
   const [price, setPrice] = useState(defaultPrice.toFixed(2));
   const { submitOrder, isSubmitting } = useTradeActions();
@@ -46,7 +47,11 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
   }, [price]);
 
   const isAllowed = isTradeSideAllowed(selectedSide, position);
-  const canSubmit = parsedSize > 0 && parsedPrice > 0 && isAllowed && !isSubmitting && (IS_DEMO_MODE || !!walletPublicKey);
+  const isMarketOrder = orderType === 'market';
+  const priceValid = isMarketOrder || parsedPrice > 0;
+  const canSubmit = parsedSize > 0 && priceValid && isAllowed && !isSubmitting && (IS_DEMO_MODE || !!walletPublicKey);
+
+  const effectivePrice = isMarketOrder ? 0.50 : parsedPrice;
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
@@ -55,13 +60,13 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
       marketAddress: market.address,
       side: selectedSide,
       size: parsedSize,
-      price: parsedPrice,
+      price: effectivePrice,
       traderPublicKey: walletPublicKey?.toBase58() ?? '',
     };
 
     await submitOrder(order);
     setSize('');
-  }, [canSubmit, market.address, selectedSide, parsedSize, parsedPrice, walletPublicKey, submitOrder]);
+  }, [canSubmit, market.address, selectedSide, parsedSize, effectivePrice, walletPublicKey, submitOrder]);
 
   const confirmation = useTradeConfirmation(handleSubmit);
 
@@ -70,11 +75,11 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
     confirmation.requestConfirmation({
       side: selectedSide,
       size: parsedSize,
-      price: parsedPrice,
+      price: effectivePrice,
       ticker: market.ticker,
       strikePrice: market.strikePrice,
     });
-  }, [canSubmit, confirmation, selectedSide, parsedSize, parsedPrice, market]);
+  }, [canSubmit, confirmation, selectedSide, parsedSize, effectivePrice, market]);
 
   return (
     <div className="space-y-4" data-testid="trade-panel">
@@ -95,17 +100,6 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
             <div className="space-y-4 pt-2">
               <PositionConstraints position={position} selectedSide={tab.value} />
 
-              {!IS_DEMO_MODE && (tab.value === TradeSide.BUY_NO || tab.value === TradeSide.SELL_NO) && (
-                <div className="p-3 rounded-lg border border-yellow-500/50 bg-yellow-500/5 text-sm">
-                  <p className="font-medium text-yellow-600">Phoenix Order Book Pending</p>
-                  <p className="text-muted-foreground mt-1">
-                    {tab.value === TradeSide.BUY_NO
-                      ? 'Buy No requires selling YES on Phoenix. Use Mint Pair (Buy Yes tab) to get both tokens.'
-                      : 'Sell No requires buying YES on Phoenix. Use Redeem (Sell Yes tab) after settlement.'}
-                  </p>
-                </div>
-              )}
-
               <div className="space-y-2">
                 <label htmlFor="trade-size-input" className="text-sm font-medium">Contracts</label>
                 <Input
@@ -121,25 +115,51 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="trade-price-input" className="text-sm font-medium">Limit Price</label>
-                <Input
-                  id="trade-price-input"
-                  type="number"
-                  placeholder="0.50"
-                  min="0.01"
-                  max="0.99"
-                  step="0.01"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  data-testid="price-input"
-                />
+                <span className="text-sm font-medium">Order Type</span>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={orderType === 'market' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setOrderType('market')}
+                    data-testid="order-type-market"
+                  >
+                    Market
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={orderType === 'limit' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setOrderType('limit')}
+                    data-testid="order-type-limit"
+                  >
+                    Limit
+                  </Button>
+                </div>
               </div>
 
-              {parsedSize > 0 && parsedPrice > 0 && (
+              {orderType === 'limit' && (
+                <div className="space-y-2">
+                  <label htmlFor="trade-price-input" className="text-sm font-medium">Limit Price</label>
+                  <Input
+                    id="trade-price-input"
+                    type="number"
+                    placeholder="0.50"
+                    min="0.01"
+                    max="0.99"
+                    step="0.01"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    data-testid="price-input"
+                  />
+                </div>
+              )}
+
+              {parsedSize > 0 && (isMarketOrder || parsedPrice > 0) && (
                 <PayoffDisplay
                   side={tab.value}
                   size={parsedSize}
-                  price={parsedPrice}
+                  price={effectivePrice}
                   ticker={market.ticker}
                   strikePrice={market.strikePrice}
                 />

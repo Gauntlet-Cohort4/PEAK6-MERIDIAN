@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { WalletButton } from '@/components/wallet/WalletButton';
+import { UsdcBalance } from '@/components/wallet/UsdcBalance';
 import { SettlementTimer } from '@/components/shared/SettlementTimer';
 import { TrendingUp } from 'lucide-react';
 import { DemoToolbar } from '@/components/shared/DemoControls';
@@ -47,6 +48,7 @@ export function Header() {
             </>
           )}
           <SettlementTimer className="hidden md:flex" />
+          <UsdcBalance />
           <WalletButton />
         </div>
       </div>
