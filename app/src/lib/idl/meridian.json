@@ -1,5 +1,5 @@
 {
-  "address": "AiG9ZAw6625w5zUQRsfmWwqXRmYSZAJe9MRfjcJoEK9h",
+  "address": "DkF63Re3EouN699gE3NvEnE1t7PuGC8UrYQEsbRAkEvE",
   "metadata": {
     "name": "meridian",
     "version": "0.1.0",
@@ -1224,12 +1224,6 @@
             "User's NO token account."
           ],
           "writable": true
-        },
-        {
-          "name": "usdc_mint",
-          "docs": [
-            "USDC mint (external)."
-          ]
         },
         {
           "name": "vault",
