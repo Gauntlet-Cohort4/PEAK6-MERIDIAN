@@ -5,7 +5,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   runSettlementJob,
-  getActiveMarkets,
   type SettlementJobDeps,
   type ActiveMarket,
 } from '../src/jobs/settlement-job.js';
@@ -40,6 +39,7 @@ function createMockDeps(overrides?: Partial<SettlementJobDeps>): SettlementJobDe
     createStrikeMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
     settleMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
     adminSettle: vi.fn().mockResolvedValue('mock-tx-sig'),
+    getActiveMarkets: vi.fn().mockResolvedValue([]),
   };
 
   return {
@@ -50,9 +50,9 @@ function createMockDeps(overrides?: Partial<SettlementJobDeps>): SettlementJobDe
 }
 
 const mockMarkets: readonly ActiveMarket[] = [
-  { ticker: 'AAPL', strikePrice: 190, marketAddress: 'market-aapl-190' },
-  { ticker: 'MSFT', strikePrice: 420, marketAddress: 'market-msft-420' },
-  { ticker: 'NVDA', strikePrice: 880, marketAddress: 'market-nvda-880' },
+  { ticker: 'AAPL', strikePrice: 190, marketAddress: 'market-aapl-190', pythPriceAccount: 'pyth-aapl' },
+  { ticker: 'MSFT', strikePrice: 420, marketAddress: 'market-msft-420', pythPriceAccount: 'pyth-msft' },
+  { ticker: 'NVDA', strikePrice: 880, marketAddress: 'market-nvda-880', pythPriceAccount: 'pyth-nvda' },
 ];
 
 describe('runSettlementJob', () => {
@@ -155,10 +155,38 @@ describe('runSettlementJob', () => {
   });
 });
 
-describe('getActiveMarkets', () => {
-  it('should return an empty frozen array (stub)', () => {
-    const markets = getActiveMarkets();
-    expect(markets).toEqual([]);
-    expect(Object.isFrozen(markets)).toBe(true);
+describe('getActiveMarkets via client', () => {
+  it('should call meridianClient.getActiveMarkets when no markets are injected', async () => {
+    const getActiveMarkets = vi.fn().mockResolvedValue([]);
+    const deps = createMockDeps({
+      meridianClient: {
+        createStrikeMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
+        settleMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
+        adminSettle: vi.fn().mockResolvedValue('mock-tx-sig'),
+        getActiveMarkets,
+      },
+    });
+
+    const result = await runSettlementJob(deps);
+
+    expect(getActiveMarkets).toHaveBeenCalledOnce();
+    expect(result.marketsSettled).toBe(0);
+    expect(result.skipped).toBe(false);
+  });
+
+  it('should not call meridianClient.getActiveMarkets when markets are injected', async () => {
+    const getActiveMarkets = vi.fn().mockResolvedValue([]);
+    const deps = createMockDeps({
+      meridianClient: {
+        createStrikeMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
+        settleMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
+        adminSettle: vi.fn().mockResolvedValue('mock-tx-sig'),
+        getActiveMarkets,
+      },
+    });
+
+    await runSettlementJob(deps, mockMarkets);
+
+    expect(getActiveMarkets).not.toHaveBeenCalled();
   });
 });

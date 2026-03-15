@@ -2,8 +2,9 @@
 .claude/
 .claude/**
 
-# Tech spec (local reference only)
+# Tech spec and project spec (local reference only)
 MERIDIAN_TECH_SPEC_v2.md
+ProjSpec.md
 
 # Dependencies
 node_modules/

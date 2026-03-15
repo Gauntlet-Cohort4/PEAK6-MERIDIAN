@@ -6,6 +6,7 @@
 
 import type { PriceServiceAdapter, TradingDayAdapter } from '@meridian/shared/adapters/types.js';
 import type { MeridianClient } from '../services/meridian-client.js';
+import type { ActiveMarket } from '../types/active-market.js';
 import { MERIDIAN_CONFIG, PYTH_FEED_IDS, type SupportedTicker } from '@meridian/shared/constants.js';
 import { Logger } from '@meridian/shared/logger.js';
 import { debugLog } from '@meridian/shared/debug.js';
@@ -13,8 +14,6 @@ import { startTrace, traceElapsed } from '@meridian/shared/tracing.js';
 
 const logger = new Logger('settlement-job');
 
-/** Pyth feed IDs — imported from shared constants (single source of truth). */
-const TICKER_FEED_IDS = PYTH_FEED_IDS;
 
 /** Dependencies injected into the settlement job. */
 export interface SettlementJobDeps {
@@ -32,12 +31,8 @@ export interface SettlementJobSummary {
   readonly durationMs: number;
 }
 
-/** Represents an active market to settle. */
-export interface ActiveMarket {
-  readonly ticker: SupportedTicker;
-  readonly strikePrice: number;
-  readonly marketAddress: string;
-}
+// ActiveMarket type is re-exported from the shared types module.
+export type { ActiveMarket } from '../types/active-market.js';
 
 /**
  * Settle a single market using the oracle price.
@@ -47,7 +42,10 @@ async function settleMarket(
   market: ActiveMarket,
   deps: SettlementJobDeps,
 ): Promise<{ settled: boolean; adminScheduled: boolean; error?: string }> {
-  const feedId = TICKER_FEED_IDS[market.ticker];
+  const feedId = PYTH_FEED_IDS[market.ticker];
+  if (!feedId) {
+    return { settled: false, adminScheduled: true, error: `No Hermes feed ID for ticker ${market.ticker}` };
+  }
 
   try {
     const priceData = await deps.priceService.getLatestPrice(feedId);
@@ -60,7 +58,7 @@ async function settleMarket(
 
     const signature = await deps.meridianClient.settleMarket({
       marketAddress: market.marketAddress,
-      pythPriceAccount: feedId,
+      pythPriceAccount: market.pythPriceAccount,
     });
 
     logger.info('settleMarket', `Settled ${market.ticker} @ $${market.strikePrice}`, {
@@ -99,21 +97,14 @@ async function settleMarket(
 }
 
 /**
- * Get active markets to settle.
- * STUBBED: returns mock data. Stage B will query on-chain state.
- */
-export function getActiveMarkets(): readonly ActiveMarket[] {
-  // STUB: In production, query on-chain for markets with status CLOSED
-  logger.info('getActiveMarkets', '[STUB] Would query on-chain for active markets');
-  return Object.freeze([]);
-}
-
-/**
  * Execute the settlement job: check trading day, settle all active markets.
+ *
+ * When `activeMarkets` is not provided, queries on-chain via
+ * `deps.meridianClient.getActiveMarkets()`.
  */
 export async function runSettlementJob(
   deps: SettlementJobDeps,
-  activeMarkets: readonly ActiveMarket[] = getActiveMarkets(),
+  activeMarkets?: readonly ActiveMarket[],
   now: Date = new Date(),
 ): Promise<SettlementJobSummary> {
   const trace = startTrace('settlement-job');
@@ -134,11 +125,14 @@ export async function runSettlementJob(
     });
   }
 
+  // Resolve markets: use injected list (tests) or query on-chain (production)
+  const resolvedMarkets = activeMarkets ?? await deps.meridianClient.getActiveMarkets();
+
   const failures: string[] = [];
   let marketsSettled = 0;
   let adminSettleScheduled = 0;
 
-  for (const market of activeMarkets) {
+  for (const market of resolvedMarkets) {
     try {
       const result = await settleMarket(market, deps);
       if (result.settled) {

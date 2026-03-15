@@ -88,6 +88,9 @@ pub struct StrikeMarket {
     /// The oracle settlement price (in cents).
     pub settlement_price: u64,
 
+    /// Unix timestamp when the market was settled (0 if not yet settled).
+    pub settled_at: i64,
+
     /// PDA bump seed for the market account.
     pub bump: u8,
 }
@@ -108,8 +111,9 @@ impl StrikeMarket {
     ///   1  - settled (bool)
     ///   1  - outcome_yes_wins (bool)
     ///   8  - settlement_price (u64)
+    ///   8  - settled_at (i64)
     ///   1  - bump (u8)
     /// ----
-    /// 193 total
-    pub const SIZE: usize = 8 + 4 + MAX_SYMBOL_LEN + 8 + 8 + 128 + 8 + 8 + 1 + 1 + 8 + 1;
+    /// 201 total
+    pub const SIZE: usize = 8 + 4 + MAX_SYMBOL_LEN + 8 + 8 + 128 + 8 + 8 + 1 + 1 + 8 + 8 + 1;
 }

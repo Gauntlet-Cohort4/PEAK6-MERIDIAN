@@ -109,6 +109,7 @@ pub fn handler(ctx: Context<SettleMarket>) -> Result<()> {
     market_mut.settled = true;
     market_mut.outcome_yes_wins = yes_wins;
     market_mut.settlement_price = settlement_price_cents;
+    market_mut.settled_at = clock.unix_timestamp;
 
     emit!(MarketSettled {
         market: market_mut.key(),
@@ -116,6 +117,7 @@ pub fn handler(ctx: Context<SettleMarket>) -> Result<()> {
         strike_price: market_mut.strike_price,
         settlement_price: settlement_price_cents,
         yes_wins,
+        settled_at: clock.unix_timestamp,
     });
 
     Ok(())

@@ -35,6 +35,7 @@ pub fn handler(
     market_mut.settled = true;
     market_mut.outcome_yes_wins = outcome_yes_wins;
     market_mut.settlement_price = settlement_price;
+    market_mut.settled_at = clock.unix_timestamp;
 
     emit!(MarketSettled {
         market: market_mut.key(),
@@ -42,6 +43,7 @@ pub fn handler(
         strike_price: market_mut.strike_price,
         settlement_price,
         yes_wins: outcome_yes_wins,
+        settled_at: clock.unix_timestamp,
     });
 
     Ok(())

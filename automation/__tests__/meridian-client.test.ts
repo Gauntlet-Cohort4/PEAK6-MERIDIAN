@@ -101,6 +101,18 @@ describe('createMeridianClient (stub/demo mode)', () => {
     });
   });
 
+  describe('getActiveMarkets', () => {
+    it('should return an empty frozen array', async () => {
+      const deps = createMockDeps();
+      const client = createMeridianClient(deps);
+
+      const markets = await client.getActiveMarkets();
+
+      expect(markets).toEqual([]);
+      expect(Object.isFrozen(markets)).toBe(true);
+    });
+  });
+
   it('should return a frozen client object', () => {
     const deps = createMockDeps();
     const client = createMeridianClient(deps);

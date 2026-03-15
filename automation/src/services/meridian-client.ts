@@ -15,11 +15,12 @@ import {
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
-import { MERIDIAN_CONFIG } from '@meridian/shared/constants.js';
+import { MERIDIAN_CONFIG, type SupportedTicker } from '@meridian/shared/constants.js';
 import { Logger } from '@meridian/shared/logger.js';
 import { debugLog } from '@meridian/shared/debug.js';
 import { MeridianError, MeridianErrorCode } from '@meridian/shared/errors.js';
 import type { TransactionSender } from './transaction-sender.js';
+import type { ActiveMarket } from '../types/active-market.js';
 
 import MeridianIDL from '../idl/meridian.json' with { type: 'json' };
 
@@ -62,6 +63,9 @@ export interface MeridianClient {
 
   /** Admin force-settle a market, return tx signature. */
   adminSettle(params: AdminSettleParams): Promise<string>;
+
+  /** Query on-chain for unsettled markets and return them. */
+  getActiveMarkets(): Promise<readonly ActiveMarket[]>;
 }
 
 /** Dependencies for the Meridian client. */
@@ -221,7 +225,12 @@ export function createStubMeridianClient(deps: MeridianClientDeps): MeridianClie
     return signature;
   }
 
-  return Object.freeze({ createStrikeMarket, settleMarket, adminSettle });
+  async function getActiveMarkets(): Promise<readonly ActiveMarket[]> {
+    logger.info('getActiveMarkets', '[STUB] Would query on-chain for active markets');
+    return Promise.resolve(Object.freeze([]));
+  }
+
+  return Object.freeze({ createStrikeMarket, settleMarket, adminSettle, getActiveMarkets });
 }
 
 // ---------------------------------------------------------------------------
@@ -436,7 +445,69 @@ export function createRealMeridianClient(deps: RealMeridianClientDeps): Meridian
     }
   }
 
-  return Object.freeze({ createStrikeMarket, settleMarket, adminSettle });
+  async function getActiveMarkets(): Promise<readonly ActiveMarket[]> {
+    logger.info('getActiveMarkets', 'Querying on-chain for unsettled markets');
+
+    try {
+      // Fetch all StrikeMarket accounts
+      const allMarkets = await program.account['strikeMarket'].all();
+
+      debugLog('CRON_JOBS', 'meridian-client', 'getActiveMarkets', 'Fetched all strike markets', {
+        total: allMarkets.length,
+      });
+
+      // Build a cache of TickerConfig accounts for pyth_feed_id lookup
+      const allTickerConfigs = await program.account['tickerConfig'].all();
+      const tickerConfigMap = new Map<string, string>();
+      for (const tc of allTickerConfigs) {
+        const account = tc.account as Record<string, unknown>;
+        const symbol = account['symbol'] as string;
+        const pythFeedId = account['pythFeedId'] as { toBase58(): string };
+        tickerConfigMap.set(symbol, pythFeedId.toBase58());
+      }
+
+      // Filter for unsettled markets and map to ActiveMarket shape
+      const activeMarkets: readonly ActiveMarket[] = allMarkets
+        .filter((m) => {
+          const account = m.account as Record<string, unknown>;
+          return account['settled'] === false;
+        })
+        .map((m) => {
+          const account = m.account as Record<string, unknown>;
+          const ticker = account['ticker'] as string;
+          const strikePriceBN = account['strikePrice'] as { toNumber(): number };
+          const pythPriceAccount = tickerConfigMap.get(ticker);
+          if (!pythPriceAccount) {
+            logger.warn('getActiveMarkets', `No TickerConfig found for ticker "${ticker}", skipping market`, {
+              context: { ticker, marketAddress: m.publicKey.toBase58() },
+            });
+            return null;
+          }
+
+          return Object.freeze({
+            ticker: ticker as SupportedTicker,
+            strikePrice: strikePriceBN.toNumber(),
+            marketAddress: m.publicKey.toBase58(),
+            pythPriceAccount,
+          });
+        })
+        .filter((m): m is ActiveMarket => m !== null);
+
+      logger.info('getActiveMarkets', `Found ${activeMarkets.length} unsettled markets`, {
+        context: { total: allMarkets.length, unsettled: activeMarkets.length },
+      });
+
+      return Object.freeze(activeMarkets);
+    } catch (err) {
+      throw new MeridianError(
+        MeridianErrorCode.RPC_ERROR,
+        'Failed to query active markets from on-chain state',
+        err,
+      );
+    }
+  }
+
+  return Object.freeze({ createStrikeMarket, settleMarket, adminSettle, getActiveMarkets });
 }
 
 // ---------------------------------------------------------------------------

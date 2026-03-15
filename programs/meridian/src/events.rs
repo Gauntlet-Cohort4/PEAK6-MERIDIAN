@@ -16,6 +16,7 @@ pub struct MarketSettled {
     pub strike_price: u64,
     pub settlement_price: u64,
     pub yes_wins: bool,
+    pub settled_at: i64,
 }
 
 /// Emitted when a user redeems tokens after settlement.

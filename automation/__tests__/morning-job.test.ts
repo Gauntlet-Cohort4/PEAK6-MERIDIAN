@@ -35,6 +35,7 @@ function createMockDeps(overrides?: Partial<MorningJobDeps>): MorningJobDeps {
     createStrikeMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
     settleMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
     adminSettle: vi.fn().mockResolvedValue('mock-tx-sig'),
+    getActiveMarkets: vi.fn().mockResolvedValue([]),
   };
 
   return {

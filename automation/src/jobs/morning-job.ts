@@ -1,29 +1,19 @@
 /**
  * @module morning-job
  * Morning job orchestration: fetches previous close prices,
- * calculates strikes, and creates markets (on-chain calls stubbed).
+ * calculates strikes, and creates on-chain strike markets.
  */
 
 import type { PriceServiceAdapter, TradingDayAdapter } from '@meridian/shared/adapters/types.js';
 import type { MeridianClient } from '../services/meridian-client.js';
-import { MERIDIAN_CONFIG, type SupportedTicker } from '@meridian/shared/constants.js';
+import { MERIDIAN_CONFIG, PYTH_FEED_IDS, type SupportedTicker } from '@meridian/shared/constants.js';
+import { PublicKey } from '@solana/web3.js';
 import { Logger } from '@meridian/shared/logger.js';
 import { debugLog } from '@meridian/shared/debug.js';
 import { startTrace, traceElapsed } from '@meridian/shared/tracing.js';
 import { calculateStrikes } from '../services/strike-calculator.js';
 
 const logger = new Logger('morning-job');
-
-/** Pyth feed IDs for supported tickers. */
-const TICKER_FEED_IDS: Readonly<Record<SupportedTicker, string>> = {
-  AAPL: 'b3a83305180090ac564afcc05ad973e5d1b7e0d1e9a8cc2b495a1cf0a4026752',
-  MSFT: 'c2e03ef975e12b5e0de3cc609e3e5f7e1cf4a35d327f89b97e7d174ab0d1c7c8',
-  GOOGL: 'e13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  AMZN: 'a13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  NVDA: 'b13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  META: 'c13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  TSLA: 'd13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-};
 
 /** Dependencies injected into the morning job. */
 export interface MorningJobDeps {
@@ -64,7 +54,7 @@ async function processTicker(
   closeTimestamp: number,
   tradingDate: number,
 ): Promise<{ strikesCreated: number; error?: string }> {
-  const feedId = TICKER_FEED_IDS[ticker];
+  const feedId = PYTH_FEED_IDS[ticker];
 
   const priceData = await deps.priceService.getHistoricalPrice(feedId, closeTimestamp);
 
@@ -86,8 +76,10 @@ async function processTicker(
       tradingDate,
     });
 
-    // TODO: Create Phoenix market first, then pass its address here
-    const phoenixMarketAddress = `phoenix-${ticker}-${strike}-${tradingDate}`;
+    // TODO: Replace with a real Phoenix DEX market address in production.
+    // Using SystemProgram address (11111...1) as a devnet placeholder since
+    // Phoenix DEX isn't live yet.
+    const phoenixMarketAddress = PublicKey.default.toBase58();
 
     const signature = await deps.meridianClient.createStrikeMarket({
       ticker,

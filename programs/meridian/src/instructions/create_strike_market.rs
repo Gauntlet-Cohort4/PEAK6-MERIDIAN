@@ -40,6 +40,7 @@ pub fn handler(
     market.settled = false;
     market.outcome_yes_wins = false;
     market.settlement_price = 0;
+    market.settled_at = 0;
     market.bump = ctx.bumps.strike_market;
 
     emit!(MarketCreated {

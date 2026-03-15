@@ -1,7 +1,8 @@
 'use client';
 
 import { use, useMemo } from 'react';
-import { MOCK_MARKETS, MOCK_ORDER_BOOKS } from '@/lib/mock-data';
+import { useMarkets } from '@/hooks/useMarkets';
+import { MOCK_ORDER_BOOKS } from '@/lib/mock-data';
 import { usePositions } from '@/hooks/usePositions';
 import { OrderBook } from '@/components/trade/OrderBook';
 import { TradePanel } from '@/components/trade/TradePanel';
@@ -16,11 +17,12 @@ interface TradePageProps {
 
 export default function TradePage({ params }: TradePageProps) {
   const { marketId } = use(params);
+  const { markets, isLoading: marketsLoading } = useMarkets();
   const { getPosition, isLoading: positionsLoading } = usePositions();
 
   const market = useMemo(
-    () => MOCK_MARKETS.find((m) => m.address === marketId) ?? null,
-    [marketId],
+    () => markets.find((m) => m.address === marketId) ?? null,
+    [markets, marketId],
   );
 
   const orderBook = useMemo(
@@ -29,6 +31,14 @@ export default function TradePage({ params }: TradePageProps) {
   );
 
   const position = market ? getPosition(market.address) : null;
+
+  if (marketsLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   if (!market) {
     return (

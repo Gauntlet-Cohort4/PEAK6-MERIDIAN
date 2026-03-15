@@ -2216,6 +2216,10 @@
           {
             "name": "yes_wins",
             "type": "bool"
+          },
+          {
+            "name": "settled_at",
+            "type": "i64"
           }
         ]
       }
@@ -2382,6 +2386,13 @@
               "The oracle settlement price (in cents)."
             ],
             "type": "u64"
+          },
+          {
+            "name": "settled_at",
+            "docs": [
+              "Unix timestamp when the market was settled (0 if not yet settled)."
+            ],
+            "type": "i64"
           },
           {
             "name": "bump",

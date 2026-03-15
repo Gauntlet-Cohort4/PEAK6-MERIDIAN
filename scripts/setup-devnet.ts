@@ -5,7 +5,8 @@
  * Steps:
  * 1. Airdrop SOL to admin wallet
  * 2. Create USDC associated token account for admin
- * 3. Register all 7 tickers with Pyth feed IDs
+ * 3. Initialize config PDA (idempotent)
+ * 4. Register all 7 tickers with Pyth feed IDs (idempotent)
  *
  * Usage:
  *   npx ts-node scripts/setup-devnet.ts
@@ -151,14 +152,55 @@ async function createUsdcAccounts(
 }
 
 // ---------------------------------------------------------------------------
-// Step 3: Register Tickers
+// Step 3: Initialize Config PDA
+// ---------------------------------------------------------------------------
+
+async function initializeConfig(
+  program: any /* eslint-disable-line @typescript-eslint/no-explicit-any */,
+  admin: Keypair,
+): Promise<void> {
+  log('3-init', 'Initializing Meridian config PDA');
+
+  const [configPda] = deriveConfigPda();
+
+  // Idempotent: skip if already initialized
+  try {
+    const existing = await program.account['meridianConfig'].fetch(configPda);
+    if (existing) {
+      log('3-init', 'Config already initialized, skipping', {
+        configPda: configPda.toBase58(),
+      });
+      return;
+    }
+  } catch {
+    // Account does not exist yet — proceed with init
+  }
+
+  const tx = await program.methods
+    .initializeConfig()
+    .accountsStrict({
+      admin: admin.publicKey,
+      config: configPda,
+      systemProgram: SystemProgram.programId,
+    })
+    .signers([admin])
+    .rpc();
+
+  log('3-init', 'Config initialized', {
+    signature: tx,
+    configPda: configPda.toBase58(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Step 4: Register Tickers
 // ---------------------------------------------------------------------------
 
 async function registerTickers(
   program: any /* eslint-disable-line @typescript-eslint/no-explicit-any */,
   admin: Keypair,
 ): Promise<void> {
-  log('3-register', 'Registering tickers');
+  log('4-register', 'Registering tickers');
 
   const [configPda] = deriveConfigPda();
 
@@ -167,7 +209,7 @@ async function registerTickers(
     const feedIdPubkey = new PublicKey(Buffer.from(feedIdHex, 'hex'));
     const [tickerPda] = deriveTickerPda(ticker);
 
-    log('3-register', `Registering ${ticker}`, {
+    log('4-register', `Registering ${ticker}`, {
       ticker,
       feedId: feedIdHex,
       tickerPda: tickerPda.toBase58(),
@@ -177,7 +219,7 @@ async function registerTickers(
     try {
       const existing = await program.account['tickerConfig'].fetch(tickerPda);
       if (existing) {
-        log('3-register', `Ticker already registered: ${ticker}`, {
+        log('4-register', `Ticker already registered: ${ticker}`, {
           tickerPda: tickerPda.toBase58(),
         });
         continue;
@@ -197,11 +239,11 @@ async function registerTickers(
       .signers([admin])
       .rpc();
 
-    log('3-register', `Registered ${ticker}`, { signature: tx });
+    log('4-register', `Registered ${ticker}`, { signature: tx });
     await sleep(MERIDIAN_CONFIG.INTER_TX_DELAY_MS);
   }
 
-  log('3-register', `All ${MERIDIAN_CONFIG.SUPPORTED_TICKERS.length} tickers registered`);
+  log('4-register', `All ${MERIDIAN_CONFIG.SUPPORTED_TICKERS.length} tickers registered`);
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +276,10 @@ async function main(): Promise<void> {
   // Step 2: Create USDC token accounts
   await createUsdcAccounts(connection, admin);
 
-  // Step 3: Register tickers
+  // Step 3: Initialize config PDA (must exist before registering tickers)
+  await initializeConfig(program, admin);
+
+  // Step 4: Register tickers
   await registerTickers(program, admin);
 
   log('done', '=== Devnet setup complete ===', {
