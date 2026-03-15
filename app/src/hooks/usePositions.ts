@@ -6,8 +6,8 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import type { Position } from '@meridian/shared/types';
 import type { SupportedTicker } from '@meridian/shared/constants';
 import { MERIDIAN_CONFIG } from '@meridian/shared/constants';
-import { MOCK_POSITIONS } from '@/lib/mock-data';
 import { useMarkets } from './useMarkets';
+import { useDemoState } from '@/providers/DemoStateProvider';
 import { deriveAta } from '@/lib/tx/program';
 
 /** Whether the app is running in demo mode. */
@@ -78,12 +78,13 @@ export function usePositions(): UsePositionsResult {
 
   const { publicKey } = useWallet();
   const { markets } = useMarkets();
+  const { state: demoState } = useDemoState();
 
   useEffect(() => {
-    // Demo mode or no wallet — use mock data
+    // Demo mode or no wallet — use demo state
     if (IS_DEMO_MODE || !publicKey) {
       const timer = setTimeout(() => {
-        setPositions(MOCK_POSITIONS);
+        setPositions(demoState.positions);
         setIsLoading(false);
         setError(null);
       }, 300);
@@ -166,7 +167,7 @@ export function usePositions(): UsePositionsResult {
     return () => {
       cancelled = true;
     };
-  }, [publicKey, markets]);
+  }, [publicKey, markets, demoState.positions]);
 
   const getPosition = useCallback(
     (marketAddress: string): Position | null => {

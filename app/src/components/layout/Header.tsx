@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { WalletButton } from '@/components/wallet/WalletButton';
 import { SettlementTimer } from '@/components/shared/SettlementTimer';
 import { TrendingUp } from 'lucide-react';
+import { DemoToolbar } from '@/components/shared/DemoControls';
 
 const IS_DEMO_MODE = typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
 
@@ -39,9 +40,12 @@ export function Header() {
 
         <div className="ml-auto flex items-center gap-4">
           {IS_DEMO_MODE && (
-            <div className="bg-yellow-500/10 text-yellow-600 text-xs font-medium px-3 py-1 rounded-full border border-yellow-500/30">
-              Demo Mode
-            </div>
+            <>
+              <div className="bg-yellow-500/10 text-yellow-600 text-xs font-medium px-3 py-1 rounded-full border border-yellow-500/30">
+                Demo Mode
+              </div>
+              <DemoToolbar />
+            </>
           )}
           <SettlementTimer className="hidden md:flex" />
           <WalletButton />

@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatUSD } from '@/lib/format';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { SettlementTimer } from '@/components/shared/SettlementTimer';
+import { DemoMarketControls } from '@/components/shared/DemoControls';
 
 interface TradePageProps {
   readonly params: Promise<{ readonly marketId: string }>;
@@ -82,7 +83,7 @@ export default function TradePage({ params }: TradePageProps) {
           )}
         </div>
 
-        <div>
+        <div className="space-y-4">
           {positionsLoading ? (
             <LoadingSpinner />
           ) : (
@@ -92,6 +93,7 @@ export default function TradePage({ params }: TradePageProps) {
               defaultPrice={orderBook?.asks[0]?.price ?? 0.5}
             />
           )}
+          <DemoMarketControls market={market} />
         </div>
       </div>
     </div>

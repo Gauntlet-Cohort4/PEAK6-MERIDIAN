@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import { WalletProvider } from '@/providers/WalletProvider';
 import { ThemeProvider } from '@/providers/ThemeProvider';
+import { DemoStateProvider } from '@/providers/DemoStateProvider';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 
@@ -20,11 +21,13 @@ export default function RootLayout({
       <body className="font-sans">
         <WalletProvider>
           <ThemeProvider>
-            <div className="flex min-h-screen flex-col">
-              <Header />
-              <main className="flex-1">{children}</main>
-              <Footer />
-            </div>
+            <DemoStateProvider>
+              <div className="flex min-h-screen flex-col">
+                <Header />
+                <main className="flex-1">{children}</main>
+                <Footer />
+              </div>
+            </DemoStateProvider>
           </ThemeProvider>
         </WalletProvider>
       </body>

@@ -88,8 +88,8 @@ export function getMeridianProgram(rpcUrl?: string): Program {
     // Dummy wallet — satisfies the type but is never used for signing
     {
       publicKey: PublicKey.default,
-      signTransaction: async (tx) => tx,
-      signAllTransactions: async (txs) => txs,
+      signTransaction: async (tx: never) => tx,
+      signAllTransactions: async (txs: never) => txs,
     } as never,
     { commitment: 'confirmed' },
   );
