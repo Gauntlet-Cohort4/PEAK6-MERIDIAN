@@ -55,6 +55,16 @@ async function buildInstructionForOrder(
         { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
         walletPubkey,
       );
+    case TradeSide.REDEEM_YES:
+      return buildRedeemInstruction(
+        { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
+        walletPubkey,
+      );
+    case TradeSide.REDEEM_NO:
+      return buildRedeemInstruction(
+        { marketAddress: order.marketAddress, tokenType: 'no', amount: order.size },
+        walletPubkey,
+      );
     case TradeSide.BUY_NO:
       // BUY_NO requires Phoenix market accounts for the composite
       // mint-pair + sell-YES-on-Phoenix instruction.
@@ -108,6 +118,18 @@ function buildDemoTransactionForOrder(
     case TradeSide.SELL_YES:
       buildRedeemTransaction(
         { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
+        wallet,
+      );
+      break;
+    case TradeSide.REDEEM_YES:
+      buildRedeemTransaction(
+        { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
+        wallet,
+      );
+      break;
+    case TradeSide.REDEEM_NO:
+      buildRedeemTransaction(
+        { marketAddress: order.marketAddress, tokenType: 'no', amount: order.size },
         wallet,
       );
       break;

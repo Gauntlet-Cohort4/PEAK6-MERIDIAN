@@ -25,6 +25,8 @@ export enum TradeSide {
   BUY_NO = 'BUY_NO',
   SELL_YES = 'SELL_YES',
   SELL_NO = 'SELL_NO',
+  REDEEM_YES = 'REDEEM_YES',
+  REDEEM_NO = 'REDEEM_NO',
 }
 
 /** On-chain strike market account data (mirrors the Anchor struct). */

@@ -29,6 +29,10 @@ function getPayoffDescription(
       return `You receive payment now. You owe $1.00 if ${above}.`;
     case TradeSide.SELL_NO:
       return `You receive payment now. You owe $1.00 if ${below}.`;
+    case TradeSide.REDEEM_YES:
+      return `Redeem winning YES tokens for $1.00 each.`;
+    case TradeSide.REDEEM_NO:
+      return `Redeem winning NO tokens for $1.00 each.`;
   }
 }
 
