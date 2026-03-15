@@ -68,17 +68,20 @@ describe('runMorningJob', () => {
 
     expect(result.skipped).toBe(false);
     expect(result.tickersProcessed).toBe(7); // 7 supported tickers
-    expect(result.strikesCreated).toBe(49); // 7 tickers * 7 strikes each
+    // With $10 rounding, 185.5 yields 4 unique strikes per ticker
+    expect(result.strikesCreated).toBe(28); // 7 tickers * 4 strikes each
     expect(result.failures.length).toBe(0);
   });
 
   it('should record failures without stopping other tickers', async () => {
+    // With retry (3 attempts), we need to reject 3 times to exhaust retries
+    // for the first ticker. callCount 1-3 reject, 4+ resolve.
     let callCount = 0;
     const priceService: PriceServiceAdapter = {
       getLatestPrice: vi.fn().mockResolvedValue(createMockPriceData(100, 'test')),
       getHistoricalPrice: vi.fn().mockImplementation(() => {
         callCount += 1;
-        if (callCount === 1) {
+        if (callCount <= 3) {
           return Promise.reject(new Error('Oracle unavailable'));
         }
         return Promise.resolve(createMockPriceData(100, 'test'));

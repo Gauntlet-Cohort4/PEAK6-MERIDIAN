@@ -23,13 +23,15 @@ export function calculateStrikes(closePrice: number): readonly number[] {
     throw new Error(`Invalid close price: ${closePrice}. Must be positive.`);
   }
 
-  const rounded = Math.round(closePrice / MERIDIAN_CONFIG.STRIKE_ROUNDING)
-    * MERIDIAN_CONFIG.STRIKE_ROUNDING;
+  const roundTo10 = (price: number): number =>
+    Math.round(price / MERIDIAN_CONFIG.STRIKE_ROUNDING) * MERIDIAN_CONFIG.STRIKE_ROUNDING;
+
+  const rounded = roundTo10(closePrice);
 
   const strikes = MERIDIAN_CONFIG.STRIKE_OFFSETS_PERCENT
     .flatMap((offset) => [
-      Math.round(rounded * (1 - offset / 100)),
-      Math.round(rounded * (1 + offset / 100)),
+      roundTo10(closePrice * (1 - offset / 100)),
+      roundTo10(closePrice * (1 + offset / 100)),
     ])
     .concat([rounded]);
 

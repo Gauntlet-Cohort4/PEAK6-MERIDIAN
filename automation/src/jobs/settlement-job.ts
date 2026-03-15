@@ -11,6 +11,12 @@ import { MERIDIAN_CONFIG, PYTH_FEED_IDS, type SupportedTicker } from '@meridian/
 import { Logger } from '@meridian/shared/logger.js';
 import { debugLog } from '@meridian/shared/debug.js';
 import { startTrace, traceElapsed } from '@meridian/shared/tracing.js';
+import { withRetry } from '../utils/retry.js';
+
+/** Maximum retry attempts for settlement (30 * 30s = 15 minutes). */
+const SETTLEMENT_MAX_ATTEMPTS = 30;
+/** Fixed retry interval for settlement in milliseconds. */
+const SETTLEMENT_RETRY_INTERVAL_MS = 30_000;
 
 const logger = new Logger('settlement-job');
 
@@ -48,34 +54,48 @@ async function settleMarket(
   }
 
   try {
-    const priceData = await deps.priceService.getLatestPrice(feedId);
+    // Retry oracle fetch + settlement for up to 15 minutes (30 attempts * 30s)
+    const result = await withRetry(
+      async () => {
+        const priceData = await deps.priceService.getLatestPrice(feedId);
 
-    debugLog('CRON_JOBS', 'settlement-job', 'settleMarket', 'Oracle price fetched', {
-      ticker: market.ticker,
-      price: priceData.price,
-      strikePrice: market.strikePrice,
-    });
+        debugLog('CRON_JOBS', 'settlement-job', 'settleMarket', 'Oracle price fetched', {
+          ticker: market.ticker,
+          price: priceData.price,
+          strikePrice: market.strikePrice,
+        });
 
-    const signature = await deps.meridianClient.settleMarket({
-      marketAddress: market.marketAddress,
-      pythPriceAccount: market.pythPriceAccount,
-    });
+        const signature = await deps.meridianClient.settleMarket({
+          marketAddress: market.marketAddress,
+          pythPriceAccount: market.pythPriceAccount,
+        });
+
+        return { priceData, signature };
+      },
+      {
+        maxAttempts: SETTLEMENT_MAX_ATTEMPTS,
+        initialDelayMs: SETTLEMENT_RETRY_INTERVAL_MS,
+        maxDelayMs: SETTLEMENT_RETRY_INTERVAL_MS, // Fixed interval, not exponential
+        backoffMultiplier: 1, // Fixed delay (not exponential)
+        operationName: `settleMarket(${market.ticker}@$${market.strikePrice})`,
+      },
+    );
 
     logger.info('settleMarket', `Settled ${market.ticker} @ $${market.strikePrice}`, {
       context: {
         ticker: market.ticker,
         strikePrice: market.strikePrice,
-        settlementPrice: priceData.price,
+        settlementPrice: result.priceData.price,
         marketAddress: market.marketAddress,
-        outcome: priceData.price >= market.strikePrice ? 'YES' : 'NO',
-        signature,
+        outcome: result.priceData.price >= market.strikePrice ? 'YES' : 'NO',
+        signature: result.signature,
       },
     });
 
     return { settled: true, adminScheduled: false };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    logger.warn('settleMarket', `Oracle failed for ${market.ticker}, scheduling admin settle`, {
+    logger.warn('settleMarket', `Oracle failed for ${market.ticker} after ${SETTLEMENT_MAX_ATTEMPTS} attempts, scheduling admin settle`, {
       error: err,
       context: {
         ticker: market.ticker,
@@ -83,7 +103,7 @@ async function settleMarket(
       },
     });
 
-    // Oracle failed — do NOT auto-settle with a guessed outcome.
+    // Oracle failed after 15 minutes of retries — do NOT auto-settle with a guessed outcome.
     // Leave the market unsettled for manual admin intervention.
     logger.error('settleMarket', `Oracle unavailable for ${market.ticker}; manual admin settlement required`, {
       context: {

@@ -2,7 +2,7 @@
  * Tests for the settlement job orchestration.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   runSettlementJob,
   type SettlementJobDeps,
@@ -56,6 +56,14 @@ const mockMarkets: readonly ActiveMarket[] = [
 ];
 
 describe('runSettlementJob', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('should skip when not a trading day', async () => {
     const deps = createMockDeps({
       tradingDayService: {
@@ -80,7 +88,7 @@ describe('runSettlementJob', () => {
     expect(result.failures.length).toBe(0);
   });
 
-  it('should schedule admin settle when oracle fails', async () => {
+  it('should schedule admin settle when oracle fails after retries', async () => {
     const priceService: PriceServiceAdapter = {
       getLatestPrice: vi.fn().mockRejectedValue(new Error('Oracle unavailable')),
       getHistoricalPrice: vi.fn().mockResolvedValue(createMockPriceData(100)),
@@ -88,7 +96,15 @@ describe('runSettlementJob', () => {
     };
 
     const deps = createMockDeps({ priceService });
-    const result = await runSettlementJob(deps, mockMarkets);
+    // Run the job and advance timers concurrently
+    const resultPromise = runSettlementJob(deps, mockMarkets);
+
+    // Advance timers enough for all retries (3 markets * 30 attempts * 30s)
+    for (let i = 0; i < 100; i++) {
+      await vi.advanceTimersByTimeAsync(30_000);
+    }
+
+    const result = await resultPromise;
 
     expect(result.adminSettleScheduled).toBe(3);
     expect(result.marketsSettled).toBe(0);
@@ -134,11 +150,15 @@ describe('runSettlementJob', () => {
   });
 
   it('should record failures in summary', async () => {
+    // Second market's oracle always fails, others succeed
     let callCount = 0;
     const priceService: PriceServiceAdapter = {
       getLatestPrice: vi.fn().mockImplementation(() => {
         callCount += 1;
-        if (callCount === 2) {
+        // First market succeeds (call 1), second market fails all 30 attempts,
+        // third market succeeds. Since retries happen, we need to fail for
+        // calls 2 through 31 (30 attempts for the second market).
+        if (callCount >= 2 && callCount <= 31) {
           return Promise.reject(new Error('Feed unavailable'));
         }
         return Promise.resolve(createMockPriceData(200));
@@ -148,7 +168,14 @@ describe('runSettlementJob', () => {
     };
 
     const deps = createMockDeps({ priceService });
-    const result = await runSettlementJob(deps, mockMarkets);
+    const resultPromise = runSettlementJob(deps, mockMarkets);
+
+    // Advance timers for the retries
+    for (let i = 0; i < 35; i++) {
+      await vi.advanceTimersByTimeAsync(30_000);
+    }
+
+    const result = await resultPromise;
 
     expect(result.failures.length).toBe(1);
     expect(result.failures[0]).toContain('Feed unavailable');

@@ -12,6 +12,7 @@ import { Logger } from '@meridian/shared/logger.js';
 import { debugLog } from '@meridian/shared/debug.js';
 import { startTrace, traceElapsed } from '@meridian/shared/tracing.js';
 import { calculateStrikes } from '../services/strike-calculator.js';
+import { withRetry } from '../utils/retry.js';
 
 const logger = new Logger('morning-job');
 
@@ -56,7 +57,15 @@ async function processTicker(
 ): Promise<{ strikesCreated: number; error?: string }> {
   const feedId = PYTH_FEED_IDS[ticker];
 
-  const priceData = await deps.priceService.getHistoricalPrice(feedId, closeTimestamp);
+  const priceData = await withRetry(
+    () => deps.priceService.getHistoricalPrice(feedId, closeTimestamp),
+    {
+      maxAttempts: 3,
+      initialDelayMs: 1000,
+      maxDelayMs: 5000,
+      operationName: `getHistoricalPrice(${ticker})`,
+    },
+  );
 
   logger.info('processTicker', `${ticker} previous close: $${priceData.price.toFixed(2)}`, {
     context: { ticker, price: priceData.price, confidence: priceData.confidence },
@@ -81,12 +90,20 @@ async function processTicker(
     // Phoenix DEX isn't live yet.
     const phoenixMarketAddress = PublicKey.default.toBase58();
 
-    const signature = await deps.meridianClient.createStrikeMarket({
-      ticker,
-      strikePrice: strike,
-      tradingDate,
-      phoenixMarketAddress,
-    });
+    const signature = await withRetry(
+      () => deps.meridianClient.createStrikeMarket({
+        ticker,
+        strikePrice: strike,
+        tradingDate,
+        phoenixMarketAddress,
+      }),
+      {
+        maxAttempts: 3,
+        initialDelayMs: 2000,
+        maxDelayMs: 10000,
+        operationName: `createStrikeMarket(${ticker}@$${strike})`,
+      },
+    );
 
     logger.info('processTicker', `Market created: ${ticker} @ $${strike}`, {
       context: { ticker, strike, signature },
