@@ -5,8 +5,7 @@ import { WalletButton } from '@/components/wallet/WalletButton';
 import { SettlementTimer } from '@/components/shared/SettlementTimer';
 import { TrendingUp } from 'lucide-react';
 import { DemoToolbar } from '@/components/shared/DemoControls';
-
-const IS_DEMO_MODE = typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
+import { IS_DEMO_MODE } from '@/lib/demo';
 
 export function Header() {
   return (

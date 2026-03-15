@@ -9,11 +9,7 @@ import { MERIDIAN_CONFIG } from '@meridian/shared/constants';
 import { useMarkets } from './useMarkets';
 import { useDemoState } from '@/providers/DemoStateProvider';
 import { deriveAta } from '@/lib/tx/program';
-
-/** Whether the app is running in demo mode. */
-const IS_DEMO_MODE =
-  typeof process !== 'undefined' &&
-  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
+import { IS_DEMO_MODE } from '@/lib/demo';
 
 export interface UsePositionsResult {
   readonly positions: readonly Position[];

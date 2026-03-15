@@ -11,11 +11,7 @@ import { buildRedeemInstruction, buildRedeemTransaction } from '@/lib/tx/redeem'
 import { buildBuyNoTransaction } from '@/lib/tx/buy-no';
 import { buildSellNoTransaction } from '@/lib/tx/sell-no';
 import type { WalletConnection } from '@/lib/tx/types';
-
-/** Whether the app is running in demo mode (no real transactions). */
-const IS_DEMO_MODE =
-  typeof process !== 'undefined' &&
-  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
+import { IS_DEMO_MODE } from '@/lib/demo';
 
 export interface UseTradeActionsResult {
   readonly submitOrder: (order: TradeOrder) => Promise<string>;

@@ -9,11 +9,7 @@ import type { SupportedTicker } from '@meridian/shared/constants';
 import { PYTH_FEED_IDS } from '@meridian/shared/constants';
 import { getMeridianProgram } from '@/lib/tx/program';
 import { useDemoState } from '@/providers/DemoStateProvider';
-
-/** Whether the app is running in demo mode (no real on-chain reads). */
-const IS_DEMO_MODE =
-  typeof process !== 'undefined' &&
-  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
+import { IS_DEMO_MODE } from '@/lib/demo';
 
 export interface UseMarketsResult {
   readonly markets: readonly StrikeMarket[];

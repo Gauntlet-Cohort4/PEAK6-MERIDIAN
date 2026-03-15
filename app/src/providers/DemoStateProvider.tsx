@@ -11,10 +11,7 @@ import { MarketStatus } from '@meridian/shared/types';
 import type { StrikeMarket, Position } from '@meridian/shared/types';
 import { MOCK_MARKETS, MOCK_POSITIONS, MOCK_PRICES } from '@/lib/mock-data';
 import type { PriceData } from '@meridian/shared/types';
-
-const IS_DEMO_MODE =
-  typeof process !== 'undefined' &&
-  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
+import { IS_DEMO_MODE } from '@/lib/demo';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -80,6 +77,7 @@ export function DemoStateProvider({ children }: { readonly children: ReactNode }
 
   const settleMarket = useCallback(
     (marketAddress: string, settlementPrice: number) => {
+      if (!isFinite(settlementPrice) || settlementPrice <= 0 || settlementPrice > 1_000_000) return;
       const settledAt = Date.now();
       setState((prev) => ({
         ...prev,

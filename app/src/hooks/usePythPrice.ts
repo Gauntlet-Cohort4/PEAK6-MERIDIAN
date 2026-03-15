@@ -5,11 +5,7 @@ import type { PriceData } from '@meridian/shared/types';
 import type { SupportedTicker } from '@meridian/shared/constants';
 import { PYTH_FEED_IDS } from '@meridian/shared/constants';
 import { MOCK_PRICES } from '@/lib/mock-data';
-
-/** Whether the app is running in demo mode. */
-const IS_DEMO_MODE =
-  typeof process !== 'undefined' &&
-  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
+import { IS_DEMO_MODE } from '@/lib/demo';
 
 /** Pyth Hermes API base URL. */
 const HERMES_BASE_URL = 'https://hermes.pyth.network';

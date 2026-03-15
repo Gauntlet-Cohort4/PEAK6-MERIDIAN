@@ -8,10 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { formatUSD } from '@/lib/format';
-
-const IS_DEMO_MODE =
-  typeof process !== 'undefined' &&
-  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
+import { IS_DEMO_MODE } from '@/lib/demo';
 
 // ---------------------------------------------------------------------------
 // Market-level controls (shown on trade page or market card)
@@ -27,7 +24,7 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
   const [settlementPrice, setSettlementPrice] = useState('');
 
   const parsedPrice = useMemo(() => parseFloat(settlementPrice), [settlementPrice]);
-  const isValidPrice = !isNaN(parsedPrice) && parsedPrice > 0 && isFinite(parsedPrice);
+  const isValidPrice = !isNaN(parsedPrice) && parsedPrice > 0 && parsedPrice <= 1_000_000;
 
   const handleSettleYes = useCallback(() => {
     if (!isValidPrice) return;

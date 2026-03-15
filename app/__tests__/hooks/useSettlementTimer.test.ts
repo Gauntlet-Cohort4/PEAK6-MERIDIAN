@@ -63,7 +63,9 @@ describe('useSettlementTimer', () => {
   it('returns trading status with demo text when DEMO_MODE is true', async () => {
     // Weekend — normally closed
     vi.setSystemTime(new Date('2026-03-14T17:00:00Z'));
-    process.env['NEXT_PUBLIC_DEMO_MODE'] = 'true';
+
+    // Mock the centralized demo module directly instead of relying on env + module reset
+    vi.doMock('../../src/lib/demo', () => ({ IS_DEMO_MODE: true }));
     vi.resetModules();
 
     const { useSettlementTimer: useDemoTimer } = await import(

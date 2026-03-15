@@ -13,11 +13,7 @@ import { TradeConfirmation } from './TradeConfirmation';
 import { useTradeActions } from '@/hooks/useTradeActions';
 import { useTradeConfirmation } from '@/hooks/useTradeConfirmation';
 import { isTradeSideAllowed } from '@/lib/position-constraints';
-
-/** Whether the app is running in demo mode (no real transactions). */
-const IS_DEMO_MODE =
-  typeof process !== 'undefined' &&
-  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
+import { IS_DEMO_MODE } from '@/lib/demo';
 
 interface TradePanelProps {
   readonly market: StrikeMarket;

@@ -3,11 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { OrderBookState } from '@meridian/shared/types';
 import { MOCK_ORDER_BOOKS } from '@/lib/mock-data';
-
-/** Whether the app is running in demo mode (no real on-chain reads). */
-const IS_DEMO_MODE =
-  typeof process !== 'undefined' &&
-  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
+import { IS_DEMO_MODE } from '@/lib/demo';
 
 export interface UseOrderBooksResult {
   readonly orderBooks: Record<string, OrderBookState>;

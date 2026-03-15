@@ -8,12 +8,9 @@ import {
   getNextTradingDay,
 } from '@meridian/shared/trading-calendar';
 import { MERIDIAN_CONFIG } from '@meridian/shared/constants';
+import { IS_DEMO_MODE } from '@/lib/demo';
 
 const NY_TZ = 'America/New_York';
-
-const IS_DEMO_MODE =
-  typeof process !== 'undefined' &&
-  process.env?.['NEXT_PUBLIC_DEMO_MODE'] === 'true';
 
 export type TimerStatus = 'trading' | 'settling' | 'closed';
 
