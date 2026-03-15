@@ -108,6 +108,7 @@ export function createRealTransactionSender(
 
         return signature;
       } catch (err) {
+        lastError = err;
         const errorMsg = err instanceof Error ? err.message : String(err);
         logger.warn('sendAndConfirm', `Attempt ${attempt} failed: ${errorMsg}`, {
           error: err,

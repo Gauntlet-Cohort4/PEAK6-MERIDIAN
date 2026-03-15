@@ -55,6 +55,7 @@ export const USDC_MINT = new PublicKey(
 // ── Program singleton ──────────────────────────────────────────────────
 
 let _program: Program | null = null;
+let _programRpcUrl: string | null = null;
 
 /**
  * Return a singleton Anchor Program instance.
@@ -66,16 +67,18 @@ let _program: Program | null = null;
  * @param rpcUrl - Optional RPC URL override (defaults to devnet).
  */
 export function getMeridianProgram(rpcUrl?: string): Program {
-  if (_program !== null) {
+  const resolvedRpc = rpcUrl ?? (
+    typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_SOLANA_RPC_URL']
+      ? process.env['NEXT_PUBLIC_SOLANA_RPC_URL']
+      : 'https://api.devnet.solana.com'
+  );
+
+  if (_program !== null && _programRpcUrl === resolvedRpc) {
     return _program;
   }
 
-  const defaultRpc = typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_SOLANA_RPC_URL']
-    ? process.env['NEXT_PUBLIC_SOLANA_RPC_URL']
-    : 'https://api.devnet.solana.com';
-
   const connection = new Connection(
-    rpcUrl ?? defaultRpc,
+    resolvedRpc,
     'confirmed',
   );
 
@@ -92,6 +95,7 @@ export function getMeridianProgram(rpcUrl?: string): Program {
   );
 
   _program = new Program(MeridianIDL, provider);
+  _programRpcUrl = resolvedRpc;
 
   return _program;
 }

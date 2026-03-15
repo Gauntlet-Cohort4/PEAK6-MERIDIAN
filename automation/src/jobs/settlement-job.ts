@@ -6,23 +6,15 @@
 
 import type { PriceServiceAdapter, TradingDayAdapter } from '@meridian/shared/adapters/types.js';
 import type { MeridianClient } from '../services/meridian-client.js';
-import { MERIDIAN_CONFIG, type SupportedTicker } from '@meridian/shared/constants.js';
+import { MERIDIAN_CONFIG, PYTH_FEED_IDS, type SupportedTicker } from '@meridian/shared/constants.js';
 import { Logger } from '@meridian/shared/logger.js';
 import { debugLog } from '@meridian/shared/debug.js';
 import { startTrace, traceElapsed } from '@meridian/shared/tracing.js';
 
 const logger = new Logger('settlement-job');
 
-/** Pyth feed IDs for supported tickers (same as morning job). */
-const TICKER_FEED_IDS: Readonly<Record<SupportedTicker, string>> = {
-  AAPL: 'b3a83305180090ac564afcc05ad973e5d1b7e0d1e9a8cc2b495a1cf0a4026752',
-  MSFT: 'c2e03ef975e12b5e0de3cc609e3e5f7e1cf4a35d327f89b97e7d174ab0d1c7c8',
-  GOOGL: 'e13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  AMZN: 'a13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  NVDA: 'b13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  META: 'c13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-  TSLA: 'd13b1c3f0e66c3f23e6e0f0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f0e0f',
-};
+/** Pyth feed IDs — imported from shared constants (single source of truth). */
+const TICKER_FEED_IDS = PYTH_FEED_IDS;
 
 /** Dependencies injected into the settlement job. */
 export interface SettlementJobDeps {
@@ -93,25 +85,14 @@ async function settleMarket(
       },
     });
 
-    // Schedule admin_settle as fallback after delay
-    const yesWins = true; // TODO: Determine outcome from backup data source
-    debugLog('CRON_JOBS', 'settlement-job', 'settleMarket', 'Scheduling admin settle', {
-      ticker: market.ticker,
-      marketAddress: market.marketAddress,
-      delaySeconds: MERIDIAN_CONFIG.ADMIN_SETTLE_DELAY_SECONDS,
-    });
-
-    try {
-      await deps.meridianClient.adminSettle({
+    // Oracle failed — do NOT auto-settle with a guessed outcome.
+    // Leave the market unsettled for manual admin intervention.
+    logger.error('settleMarket', `Oracle unavailable for ${market.ticker}; manual admin settlement required`, {
+      context: {
+        ticker: market.ticker,
         marketAddress: market.marketAddress,
-        outcomeYesWins: yesWins,
-        settlementPrice: 0, // TODO: fetch from backup data source when oracle fails
-      });
-    } catch (adminErr) {
-      logger.error('settleMarket', `Admin settle also failed for ${market.ticker}`, {
-        error: adminErr,
-      });
-    }
+      },
+    });
 
     return { settled: false, adminScheduled: true, error: errorMsg };
   }

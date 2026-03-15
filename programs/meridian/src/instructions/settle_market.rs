@@ -144,7 +144,9 @@ fn convert_to_cents(price: i64, expo: i32) -> Result<u64> {
         let divisor = 10u64
             .checked_pow((-adjusted_expo) as u32)
             .ok_or(MeridianError::ArithmeticOverflow)?;
-        Ok(price_u64.checked_div(divisor).unwrap_or(0))
+        price_u64
+            .checked_div(divisor)
+            .ok_or(MeridianError::ArithmeticOverflow.into())
     }
 }
 
@@ -159,14 +161,14 @@ pub struct SettleMarket<'info> {
         seeds = [CONFIG_SEED],
         bump = config.bump,
     )]
-    pub config: Account<'info, MeridianConfig>,
+    pub config: Box<Account<'info, MeridianConfig>>,
 
     /// The ticker config (to validate pyth feed).
     #[account(
         seeds = [TICKER_SEED, ticker_config.symbol.as_bytes()],
         bump = ticker_config.bump,
     )]
-    pub ticker_config: Account<'info, TickerConfig>,
+    pub ticker_config: Box<Account<'info, TickerConfig>>,
 
     /// The strike market to settle.
     #[account(
@@ -180,7 +182,7 @@ pub struct SettleMarket<'info> {
         bump = strike_market.bump,
         constraint = strike_market.ticker == ticker_config.symbol,
     )]
-    pub strike_market: Account<'info, StrikeMarket>,
+    pub strike_market: Box<Account<'info, StrikeMarket>>,
 
     /// Pyth price account for the ticker.
     /// CHECK: Validated by comparing against ticker_config.pyth_feed_id.

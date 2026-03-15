@@ -61,7 +61,7 @@ pub struct AdminSettle<'info> {
         seeds = [CONFIG_SEED],
         bump = config.bump,
     )]
-    pub config: Account<'info, MeridianConfig>,
+    pub config: Box<Account<'info, MeridianConfig>>,
 
     /// The strike market to force-settle.
     #[account(
@@ -74,5 +74,5 @@ pub struct AdminSettle<'info> {
         ],
         bump = strike_market.bump,
     )]
-    pub strike_market: Account<'info, StrikeMarket>,
+    pub strike_market: Box<Account<'info, StrikeMarket>>,
 }

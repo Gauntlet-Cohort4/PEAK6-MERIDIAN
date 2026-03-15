@@ -13,7 +13,7 @@
  *   SOLANA_CLUSTER=mainnet npx ts-node scripts/deploy.ts
  */
 
-import { execFileSync, execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import {
   BN,
   Connection,
@@ -66,7 +66,7 @@ function buildProgram(): void {
   log('1-build', 'Building Anchor program...');
 
   try {
-    execSync('anchor build', {
+    execFileSync('anchor', ['build'], {
       stdio: 'inherit',
       cwd: process.cwd(),
     });

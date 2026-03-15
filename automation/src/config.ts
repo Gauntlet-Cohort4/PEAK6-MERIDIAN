@@ -31,6 +31,9 @@ const configSchema = z.object({
   programId: z
     .string()
     .min(1, 'PROGRAM_ID is required'),
+  solanaNetwork: z
+    .enum(['devnet', 'mainnet-beta'])
+    .default('devnet'),
   demoMode: z
     .boolean()
     .default(false),
@@ -67,6 +70,7 @@ export function loadConfig(
     finnhubApiKey: env['FINNHUB_API_KEY'],
     adminKeypairPath: env['ADMIN_KEYPAIR_PATH'],
     programId: env['PROGRAM_ID'],
+    solanaNetwork: env['SOLANA_NETWORK'],
     demoMode: parseBoolEnv(env['DEMO_MODE']),
     cronMorningSchedule: env['CRON_MORNING_SCHEDULE'],
     cronSettlementSchedule: env['CRON_SETTLEMENT_SCHEDULE'],

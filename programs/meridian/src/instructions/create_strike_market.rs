@@ -68,14 +68,14 @@ pub struct CreateStrikeMarket<'info> {
         seeds = [CONFIG_SEED],
         bump = config.bump,
     )]
-    pub config: Account<'info, MeridianConfig>,
+    pub config: Box<Account<'info, MeridianConfig>>,
 
     /// The ticker this market belongs to.
     #[account(
         seeds = [TICKER_SEED, ticker_config.symbol.as_bytes()],
         bump = ticker_config.bump,
     )]
-    pub ticker_config: Account<'info, TickerConfig>,
+    pub ticker_config: Box<Account<'info, TickerConfig>>,
 
     /// The strike market PDA.
     #[account(
@@ -90,7 +90,7 @@ pub struct CreateStrikeMarket<'info> {
         ],
         bump,
     )]
-    pub strike_market: Account<'info, StrikeMarket>,
+    pub strike_market: Box<Account<'info, StrikeMarket>>,
 
     /// YES outcome token mint (PDA).
     #[account(
@@ -101,7 +101,7 @@ pub struct CreateStrikeMarket<'info> {
         seeds = [YES_MINT_SEED, strike_market.key().as_ref()],
         bump,
     )]
-    pub yes_mint: Account<'info, Mint>,
+    pub yes_mint: Box<Account<'info, Mint>>,
 
     /// NO outcome token mint (PDA).
     #[account(
@@ -112,10 +112,10 @@ pub struct CreateStrikeMarket<'info> {
         seeds = [NO_MINT_SEED, strike_market.key().as_ref()],
         bump,
     )]
-    pub no_mint: Account<'info, Mint>,
+    pub no_mint: Box<Account<'info, Mint>>,
 
     /// USDC token mint (external).
-    pub usdc_mint: Account<'info, Mint>,
+    pub usdc_mint: Box<Account<'info, Mint>>,
 
     /// USDC vault for this market (PDA-owned ATA).
     #[account(
@@ -126,7 +126,7 @@ pub struct CreateStrikeMarket<'info> {
         seeds = [VAULT_SEED, strike_market.key().as_ref()],
         bump,
     )]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: Box<Account<'info, TokenAccount>>,
 
     /// Phoenix Legacy market address (created off-chain).
     /// CHECK: Validated off-chain; stored as reference only.

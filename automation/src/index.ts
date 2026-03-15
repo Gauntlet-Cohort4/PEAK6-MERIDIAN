@@ -73,7 +73,7 @@ function buildMeridianClient(config: AutomationConfig): MeridianClient {
     adminKeypairPath: config.adminKeypairPath,
     connection,
     adminKeypair,
-    usdcMint: config.solanaRpcUrl.includes('mainnet')
+    usdcMint: config.solanaNetwork === 'mainnet-beta'
       ? USDC_MINTS.mainnet
       : USDC_MINTS.devnet,
   });

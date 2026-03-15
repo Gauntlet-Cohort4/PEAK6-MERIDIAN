@@ -53,7 +53,7 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
       side: selectedSide,
       size: parsedSize,
       price: parsedPrice,
-      traderPublicKey: 'mock-trader-pubkey',
+      traderPublicKey: '11111111111111111111111111111111',
     };
 
     await submitOrder(order);

@@ -31,8 +31,20 @@ describe('loadConfig', () => {
     expect(config.pythHermesUrl).toBe('https://hermes.pyth.network');
     expect(config.pythBenchmarksUrl).toBe('https://benchmarks.pyth.network');
     expect(config.demoMode).toBe(false);
+    expect(config.solanaNetwork).toBe('devnet');
     expect(config.cronMorningSchedule).toBe('0 8 * * 1-5');
     expect(config.cronSettlementSchedule).toBe('5 16 * * 1-5');
+  });
+
+  it('should accept SOLANA_NETWORK=mainnet-beta', () => {
+    const env = { ...validEnv(), SOLANA_NETWORK: 'mainnet-beta' };
+    const config = loadConfig(env);
+    expect(config.solanaNetwork).toBe('mainnet-beta');
+  });
+
+  it('should reject invalid SOLANA_NETWORK values', () => {
+    const env = { ...validEnv(), SOLANA_NETWORK: 'testnet' };
+    expect(() => loadConfig(env)).toThrow('Configuration validation failed');
   });
 
   it('should parse DEMO_MODE=true', () => {

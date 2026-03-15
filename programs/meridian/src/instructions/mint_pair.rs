@@ -107,7 +107,7 @@ pub struct MintPair<'info> {
         seeds = [CONFIG_SEED],
         bump = config.bump,
     )]
-    pub config: Account<'info, MeridianConfig>,
+    pub config: Box<Account<'info, MeridianConfig>>,
 
     /// The strike market.
     #[account(

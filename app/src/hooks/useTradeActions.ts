@@ -6,12 +6,10 @@ import { Connection, Transaction, PublicKey } from '@solana/web3.js';
 import type { TradeOrder } from '@meridian/shared/types';
 import { TradeSide } from '@meridian/shared/types';
 import { MeridianError, MeridianErrorCode } from '@meridian/shared/errors';
-import { buildMintPairInstruction } from '@/lib/tx/mint-pair';
-import { buildRedeemInstruction } from '@/lib/tx/redeem';
-import { buildMintPairTransaction } from '@/lib/tx/mint-pair';
+import { buildMintPairInstruction, buildMintPairTransaction } from '@/lib/tx/mint-pair';
+import { buildRedeemInstruction, buildRedeemTransaction } from '@/lib/tx/redeem';
 import { buildBuyNoTransaction } from '@/lib/tx/buy-no';
 import { buildSellNoTransaction } from '@/lib/tx/sell-no';
-import { buildRedeemTransaction } from '@/lib/tx/redeem';
 import type { WalletConnection } from '@/lib/tx/types';
 
 /** Whether the app is running in demo mode (no real transactions). */
