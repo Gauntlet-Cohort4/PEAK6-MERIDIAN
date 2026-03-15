@@ -13,6 +13,7 @@ target/
 .next/
 out/
 dist/
+*.tsbuildinfo
 
 # Environment
 .env
