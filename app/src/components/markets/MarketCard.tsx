@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
 import type { StrikeMarket, OrderBookState } from '@meridian/shared/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +27,7 @@ function getBestPrices(book: OrderBookState | null): {
   return { bestBid, bestAsk };
 }
 
-export function MarketCard({ market, orderBook, currentStockPrice }: MarketCardProps) {
+export const MarketCard = memo(function MarketCard({ market, orderBook, currentStockPrice }: MarketCardProps) {
   const { bestBid, bestAsk } = getBestPrices(orderBook);
   const probability = calcImpliedProbability(bestBid, bestAsk);
   const oneSided = isOneSidedBook(bestBid, bestAsk);
@@ -87,4 +88,4 @@ export function MarketCard({ market, orderBook, currentStockPrice }: MarketCardP
       </Card>
     </Link>
   );
-}
+});

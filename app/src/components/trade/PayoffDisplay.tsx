@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { TradeSide } from '@meridian/shared/types';
 import { formatUSD } from '@/lib/format';
 import { cn } from '@/lib/cn';
@@ -42,7 +43,7 @@ function getCostLabel(side: TradeSide): string {
     : 'You pay';
 }
 
-export function PayoffDisplay({
+export const PayoffDisplay = memo(function PayoffDisplay({
   side,
   size,
   price,
@@ -78,4 +79,4 @@ export function PayoffDisplay({
       )}
     </div>
   );
-}
+});

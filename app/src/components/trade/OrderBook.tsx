@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import type { OrderBookState, OrderBookEntry } from '@meridian/shared/types';
 import { toNoPerspective } from '@/lib/perspective';
 import { formatPrice } from '@/lib/format';
@@ -12,7 +13,7 @@ interface OrderBookProps {
   readonly perspective: Perspective;
 }
 
-function OrderRow({
+const OrderRow = memo(function OrderRow({
   entry,
   isBid,
   maxSize,
@@ -41,9 +42,9 @@ function OrderRow({
       <span className="relative z-10 text-muted-foreground">{entry.size}</span>
     </div>
   );
-}
+});
 
-function OrderBookSide({
+const OrderBookSide = memo(function OrderBookSide({
   entries,
   isBid,
 }: {
@@ -73,9 +74,9 @@ function OrderBookSide({
       )}
     </div>
   );
-}
+});
 
-export function OrderBook({ orderBookData, perspective }: OrderBookProps) {
+export const OrderBook = memo(function OrderBook({ orderBookData, perspective }: OrderBookProps) {
   const book =
     perspective === 'no' ? toNoPerspective(orderBookData) : orderBookData;
 
@@ -84,6 +85,7 @@ export function OrderBook({ orderBookData, perspective }: OrderBookProps) {
       className="rounded-lg border p-3"
       data-testid="order-book"
       data-perspective={perspective}
+      aria-label={`${perspective === 'yes' ? 'Yes' : 'No'} order book`}
     >
       <h3 className="text-sm font-semibold mb-3">
         &ldquo;{perspective === 'yes' ? 'Yes' : 'No'}&rdquo; Order Book
@@ -107,4 +109,4 @@ export function OrderBook({ orderBookData, perspective }: OrderBookProps) {
       )}
     </div>
   );
-}
+});

@@ -93,10 +93,11 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
 
       {/* Force settle */}
       <div className="space-y-2">
-        <label className="text-xs text-muted-foreground">
+        <label htmlFor="demo-settlement-price" className="text-xs text-muted-foreground">
           Settlement Price (strike: {formatUSD(market.strikePrice)})
         </label>
         <Input
+          id="demo-settlement-price"
           type="number"
           placeholder={`e.g. ${(market.strikePrice * 1.05).toFixed(2)}`}
           step="0.01"

@@ -107,8 +107,9 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Contracts</label>
+                <label htmlFor="trade-size-input" className="text-sm font-medium">Contracts</label>
                 <Input
+                  id="trade-size-input"
                   type="number"
                   placeholder="0"
                   min="1"
@@ -120,8 +121,9 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Limit Price</label>
+                <label htmlFor="trade-price-input" className="text-sm font-medium">Limit Price</label>
                 <Input
+                  id="trade-price-input"
                   type="number"
                   placeholder="0.50"
                   min="0.01"

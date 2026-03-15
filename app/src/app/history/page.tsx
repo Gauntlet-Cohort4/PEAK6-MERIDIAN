@@ -5,6 +5,7 @@ import type { TradeHistoryEntry } from '@/hooks/useTradeHistory';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 function formatTimestamp(ts: number): string {
   if (ts === 0) return 'Unknown';
@@ -72,33 +73,35 @@ export default function HistoryPage() {
   const { history, isLoading, error } = useTradeHistory();
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="space-y-2 mb-8">
-        <h1 className="text-3xl font-bold">Trade History</h1>
-        <p className="text-muted-foreground">
-          Your Meridian transactions
-        </p>
-      </div>
+    <ErrorBoundary>
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-2 mb-8">
+          <h1 className="text-3xl font-bold">Trade History</h1>
+          <p className="text-muted-foreground">
+            Your Meridian transactions
+          </p>
+        </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-16">
-          <LoadingSpinner />
-        </div>
-      ) : error ? (
-        <p className="text-center text-destructive py-8">
-          Failed to load history: {error}
-        </p>
-      ) : history.length === 0 ? (
-        <p className="text-center text-muted-foreground py-16">
-          No trade history yet. Make a trade to see it here.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {history.map((entry) => (
-            <HistoryRow key={entry.signature} entry={entry} />
-          ))}
-        </div>
-      )}
-    </div>
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <LoadingSpinner />
+          </div>
+        ) : error ? (
+          <p className="text-center text-destructive py-8">
+            Failed to load history: {error}
+          </p>
+        ) : history.length === 0 ? (
+          <p className="text-center text-muted-foreground py-16">
+            No trade history yet. Make a trade to see it here.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {history.map((entry) => (
+              <HistoryRow key={entry.signature} entry={entry} />
+            ))}
+          </div>
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }
