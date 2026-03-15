@@ -11,6 +11,7 @@ import { cn } from '@/lib/cn';
 interface MarketCardProps {
   readonly market: StrikeMarket;
   readonly orderBook: OrderBookState | null;
+  readonly currentStockPrice?: number | null;
 }
 
 function getBestPrices(book: OrderBookState | null): {
@@ -25,7 +26,7 @@ function getBestPrices(book: OrderBookState | null): {
   return { bestBid, bestAsk };
 }
 
-export function MarketCard({ market, orderBook }: MarketCardProps) {
+export function MarketCard({ market, orderBook, currentStockPrice }: MarketCardProps) {
   const { bestBid, bestAsk } = getBestPrices(orderBook);
   const probability = calcImpliedProbability(bestBid, bestAsk);
   const oneSided = isOneSidedBook(bestBid, bestAsk);
@@ -48,6 +49,12 @@ export function MarketCard({ market, orderBook }: MarketCardProps) {
           </p>
         </CardHeader>
         <CardContent>
+          <p className="text-sm mb-3">
+            <span className="text-muted-foreground">Current: </span>
+            <span className="font-mono font-medium">
+              {currentStockPrice != null ? formatUSD(currentStockPrice) : '\u2014'}
+            </span>
+          </p>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Yes</p>
