@@ -3,17 +3,14 @@
 import dynamic from 'next/dynamic';
 
 /**
- * Wallet connect/disconnect button using Solana wallet adapter.
- * Dynamically imported to avoid SSR issues with wallet adapter.
+ * Custom wallet selector with inline picker and animated swap.
+ * Dynamically imported to avoid SSR issues with wallet adapter hooks.
  */
-const WalletMultiButtonDynamic = dynamic(
-  async () => {
-    const { WalletMultiButton } = await import('@solana/wallet-adapter-react-ui');
-    return WalletMultiButton;
-  },
+const WalletButtonInner = dynamic(
+  () => import('./WalletButtonInner').then((m) => m.WalletButtonInner),
   { ssr: false },
 );
 
 export function WalletButton(): React.JSX.Element {
-  return <WalletMultiButtonDynamic data-testid="wallet-button" />;
+  return <WalletButtonInner />;
 }

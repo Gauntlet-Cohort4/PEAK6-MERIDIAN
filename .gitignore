@@ -40,3 +40,6 @@ coverage/
 # Logs
 *.log
 npm-debug.log*
+
+# Chrome DevTools screenshots
+screenshots/

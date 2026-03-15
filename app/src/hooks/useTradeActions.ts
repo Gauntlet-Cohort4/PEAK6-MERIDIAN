@@ -193,8 +193,10 @@ export function useTradeActions(): UseTradeActionsResult {
     try {
       // ── Demo mode: fake signature, no wallet needed ──
       if (IS_DEMO_MODE) {
+        // Use connected wallet key if available, otherwise a valid dummy key
+        const demoKey = publicKey?.toBase58() ?? (order.traderPublicKey || '11111111111111111111111111111111');
         const stubWallet: WalletConnection = {
-          publicKey: order.traderPublicKey,
+          publicKey: demoKey,
           signTransaction: async (_tx) => ({
             serialized: new Uint8Array([]),
           }),

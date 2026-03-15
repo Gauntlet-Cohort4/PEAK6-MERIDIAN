@@ -5,6 +5,7 @@ import { usePositions } from '@/hooks/usePositions';
 import { useMarkets } from '@/hooks/useMarkets';
 import { useTradeActions } from '@/hooks/useTradeActions';
 import { MarketStatus, TradeSide } from '@meridian/shared/types';
+import { useDemoState } from '@/providers/DemoStateProvider';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
@@ -15,6 +16,7 @@ export default function PortfolioPage() {
   const { positions, isLoading: positionsLoading } = usePositions();
   const { markets, isLoading: marketsLoading } = useMarkets();
   const { submitOrder, isSubmitting } = useTradeActions();
+  const { actions: demoActions, isDemoMode } = useDemoState();
   const [redeemingMarket, setRedeemingMarket] = useState<string | null>(null);
 
   const isLoading = positionsLoading || marketsLoading;
@@ -42,8 +44,13 @@ export default function PortfolioPage() {
           side,
           size: amount,
           price: 1.0,
-          traderPublicKey: '', // Filled by useTradeActions from wallet
+          traderPublicKey: '',
         });
+        // In demo mode, update local state to remove redeemed position
+        if (isDemoMode) {
+          const isYes = side === TradeSide.REDEEM_YES;
+          demoActions.redeemPosition(marketAddress, isYes, amount);
+        }
       } catch (err) {
         console.error('Redeem failed:', err);
       } finally {
