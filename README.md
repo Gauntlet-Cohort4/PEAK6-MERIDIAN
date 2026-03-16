@@ -182,7 +182,7 @@ Open [http://localhost:3002](http://localhost:3002). Connect a Solana wallet (Ph
 
 ## Technology Choices & Justifications
 
-Each major dependency was evaluated against alternatives. Full rationale is in `Meridian_Decision_Rationale_V2.pdf`.
+Each major dependency was evaluated against alternatives. Full rationale with trade-off explanations is in [DECISIONS_AND_TRADEOFFS.md](DECISIONS_AND_TRADEOFFS.md).
 
 ### Solana
 
@@ -264,7 +264,7 @@ Key variables:
 
 ## Risks & Limitations
 
-See [RISKS.md](RISKS.md) for a detailed assessment covering oracle risks, network risks, smart contract limitations, and operational risks.
+See [RISKS.md](RISKS.md) for a detailed assessment covering oracle risks, network risks, smart contract limitations, and operational risks. See [DECISIONS_AND_TRADEOFFS.md](DECISIONS_AND_TRADEOFFS.md) for architecture decisions and trade-off explanations.
 
 ## License
 
