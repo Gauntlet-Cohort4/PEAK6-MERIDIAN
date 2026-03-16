@@ -268,4 +268,4 @@ See [RISKS.md](RISKS.md) for a detailed assessment covering oracle risks, networ
 
 ## License
 
-Proprietary — PEAK6 Investments
+Proprietary
