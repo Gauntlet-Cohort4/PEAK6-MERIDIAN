@@ -34,9 +34,17 @@ export function WalletButtonInner(): React.JSX.Element {
   useEffect(() => {
     if (pendingConnect && wallet && !connected) {
       setPendingConnect(false);
-      connect().catch(() => {
-        // User rejected or wallet unavailable — stay disconnected
-      });
+
+      // Only attempt connect if the wallet is actually installed/loadable
+      const isReady =
+        wallet.readyState === WalletReadyState.Installed ||
+        wallet.readyState === WalletReadyState.Loadable;
+
+      if (isReady) {
+        connect().catch(() => {
+          // User rejected or extension not responding — stay disconnected
+        });
+      }
     }
   }, [pendingConnect, wallet, connected, connect]);
 
@@ -54,15 +62,17 @@ export function WalletButtonInner(): React.JSX.Element {
 
   const handleSelectWallet = useCallback(
     (w: (typeof wallets)[number]) => {
-      const isInstalled =
-        w.readyState === WalletReadyState.Installed ||
-        w.readyState === WalletReadyState.Loadable;
-
-      if (isInstalled) {
+      if (w.readyState === WalletReadyState.Installed) {
+        // Extension is definitely present — connect directly
+        select(w.adapter.name as WalletName);
+        setPendingConnect(true);
+      } else if (w.readyState === WalletReadyState.Loadable) {
+        // Adapter registered but extension may not be present — try connect,
+        // the catch in the useEffect will handle failure silently
         select(w.adapter.name as WalletName);
         setPendingConnect(true);
       } else {
-        // Open download page for uninstalled wallet
+        // Not installed — open download page
         const url = WALLET_URLS[w.adapter.name] ?? w.adapter.url;
         window.open(url, '_blank', 'noopener,noreferrer');
       }
@@ -106,7 +116,7 @@ export function WalletButtonInner(): React.JSX.Element {
     if (uiState === 'selecting') {
       return (
         <div
-          className="flex items-center gap-1 rounded-lg border bg-background p-1"
+          className="flex items-center gap-1 rounded-md border border-[#1e2a3a] bg-[#111827] p-1"
           data-testid="wallet-button"
         >
           {wallets.map((w) => {
@@ -118,7 +128,7 @@ export function WalletButtonInner(): React.JSX.Element {
               <button
                 key={w.adapter.name}
                 onClick={() => handleSelectWallet(w)}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
+                className="flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[#1a2035] text-[#e2e8f0]"
                 title={
                   isInstalled
                     ? `Connect ${w.adapter.name}`
@@ -128,14 +138,14 @@ export function WalletButtonInner(): React.JSX.Element {
                 <Image
                   src={w.adapter.icon}
                   alt={w.adapter.name}
-                  width={24}
-                  height={24}
+                  width={20}
+                  height={20}
                   className={`rounded-sm ${isInstalled ? '' : 'opacity-40'}`}
                   unoptimized
                 />
                 <span className="hidden sm:inline">{w.adapter.name}</span>
                 {!isInstalled && (
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[10px] text-[#64748b]">
                     Install
                   </span>
                 )}
@@ -149,7 +159,7 @@ export function WalletButtonInner(): React.JSX.Element {
     return (
       <button
         onClick={() => setUiState('selecting')}
-        className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        className="flex items-center gap-2 rounded-md bg-[#3b82f6] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#2563eb]"
         data-testid="wallet-button"
       >
         Connect
@@ -165,21 +175,21 @@ export function WalletButtonInner(): React.JSX.Element {
 
   return (
     <div
-      className="flex items-center gap-1 rounded-lg border bg-background p-1"
+      className="flex items-center gap-1 rounded-md border border-[#1e2a3a] bg-[#111827] p-1"
       data-testid="wallet-button"
     >
       {/* Small inactive wallet logo — click to swap */}
       {inactiveWallet && (
         <button
           onClick={() => handleSwap(inactiveWallet)}
-          className="flex items-center justify-center rounded-md p-1.5 transition-all duration-200 ease-in-out hover:bg-accent"
+          className="flex items-center justify-center rounded-sm p-1 transition-all duration-200 ease-in-out hover:bg-[#1a2035]"
           title={`Switch to ${inactiveWallet.adapter.name}`}
         >
           <Image
             src={inactiveWallet.adapter.icon}
             alt={inactiveWallet.adapter.name}
-            width={20}
-            height={20}
+            width={18}
+            height={18}
             className="rounded-sm opacity-50 transition-opacity duration-200 hover:opacity-100"
             unoptimized
           />
@@ -187,19 +197,19 @@ export function WalletButtonInner(): React.JSX.Element {
       )}
 
       {/* Active wallet — large logo + address */}
-      <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1.5 transition-all duration-200 ease-in-out">
+      <div className="flex items-center gap-1.5 rounded-sm bg-[#3b82f6]/10 px-2.5 py-1 transition-all duration-200 ease-in-out">
         <Image
           src={activeWallet.adapter.icon}
           alt={activeWallet.adapter.name}
-          width={24}
-          height={24}
+          width={20}
+          height={20}
           className="rounded-sm"
           unoptimized
         />
-        <span className="text-sm font-medium">
+        <span className="text-xs font-medium font-mono text-[#e2e8f0]">
           {truncatedAddress ?? activeWallet.adapter.name}
         </span>
-        <span className="text-xs text-green-600 font-medium">Connected</span>
+        <span className="text-[10px] text-[#3b82f6] font-semibold">Connected</span>
       </div>
     </div>
   );

@@ -108,6 +108,38 @@ describe('Position Constraint Enforcement - Cannot Hold Both Yes and No', () => 
     });
   });
 
+  describe('Holding both Yes and No (transient state from mint)', () => {
+    const bothPos = makePosition(10, 10);
+
+    it('blocks BUY_YES (must sell one side first)', () => {
+      expect(isTradeSideAllowed(TradeSide.BUY_YES, bothPos)).toBe(false);
+    });
+
+    it('blocks BUY_NO (must sell one side first)', () => {
+      expect(isTradeSideAllowed(TradeSide.BUY_NO, bothPos)).toBe(false);
+    });
+
+    it('allows SELL_YES (close one side)', () => {
+      expect(isTradeSideAllowed(TradeSide.SELL_YES, bothPos)).toBe(true);
+    });
+
+    it('allows SELL_NO (close one side)', () => {
+      expect(isTradeSideAllowed(TradeSide.SELL_NO, bothPos)).toBe(true);
+    });
+
+    it('reports holdingYes=true, holdingNo=true', () => {
+      const result = getAvailableTrades(bothPos);
+      expect(result.holdingYes).toBe(true);
+      expect(result.holdingNo).toBe(true);
+    });
+
+    it('returns exactly 2 sides (sell only)', () => {
+      const result = getAvailableTrades(bothPos);
+      expect(result.availableSides).toHaveLength(2);
+      expect(result.availableSides).toEqual([TradeSide.SELL_YES, TradeSide.SELL_NO]);
+    });
+  });
+
   describe('Edge cases', () => {
     it('treats very small Yes balance as holding Yes', () => {
       const pos = makePosition(0.001, 0);

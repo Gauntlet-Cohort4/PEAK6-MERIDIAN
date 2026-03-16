@@ -26,20 +26,20 @@ const OrderRow = memo(function OrderRow({
 
   return (
     <div
-      className="relative flex items-center justify-between px-2 py-1 text-xs font-mono"
+      className="relative flex items-center justify-between px-2 py-0.5 text-xs font-mono"
       data-testid="order-row"
     >
       <div
         className={cn(
-          'absolute inset-0 opacity-10',
-          isBid ? 'bg-yes' : 'bg-no',
+          'absolute inset-0 opacity-15',
+          isBid ? 'bg-[#00d26a]' : 'bg-[#ff3b69]',
         )}
         style={{ width: `${widthPercent}%` }}
       />
-      <span className={cn('relative z-10', isBid ? 'text-yes' : 'text-no')}>
+      <span className={cn('relative z-10', isBid ? 'text-[#00d26a]' : 'text-[#ff3b69]')}>
         {formatPrice(entry.price)}
       </span>
-      <span className="relative z-10 text-muted-foreground">{entry.size}</span>
+      <span className="relative z-10 text-[#64748b]">{entry.size}</span>
     </div>
   );
 });
@@ -54,8 +54,8 @@ const OrderBookSide = memo(function OrderBookSide({
   const maxSize = Math.max(...entries.map((e) => e.size), 1);
 
   return (
-    <div className="space-y-0.5">
-      <div className="flex justify-between px-2 text-xs text-muted-foreground font-medium mb-1">
+    <div>
+      <div className="flex justify-between px-2 text-[10px] uppercase tracking-wider text-[#64748b] font-medium mb-1">
         <span>Price</span>
         <span>Size</span>
       </div>
@@ -68,7 +68,7 @@ const OrderBookSide = memo(function OrderBookSide({
         />
       ))}
       {entries.length === 0 && (
-        <p className="text-center text-xs text-muted-foreground py-2">
+        <p className="text-center text-[10px] text-[#64748b] py-2">
           No orders
         </p>
       )}
@@ -82,28 +82,28 @@ export const OrderBook = memo(function OrderBook({ orderBookData, perspective }:
 
   return (
     <div
-      className="rounded-lg border p-3"
+      className="rounded-md border border-[#1e2a3a] bg-[#111827] p-3"
       data-testid="order-book"
       data-perspective={perspective}
       aria-label={`${perspective === 'yes' ? 'Yes' : 'No'} order book`}
     >
-      <h3 className="text-sm font-semibold mb-3">
+      <h3 className="text-xs font-semibold text-[#e2e8f0] mb-2 uppercase tracking-wider">
         &ldquo;{perspective === 'yes' ? 'Yes' : 'No'}&rdquo; Order Book
       </h3>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-xs font-medium text-yes mb-1">Bids</p>
+          <p className="text-[10px] font-semibold text-[#00d26a] mb-1 uppercase tracking-wider">Bids</p>
           <OrderBookSide entries={book.bids} isBid={true} />
         </div>
         <div>
-          <p className="text-xs font-medium text-no mb-1">Asks</p>
+          <p className="text-[10px] font-semibold text-[#ff3b69] mb-1 uppercase tracking-wider">Asks</p>
           <OrderBookSide entries={book.asks} isBid={false} />
         </div>
       </div>
 
       {book.spread !== null && (
-        <p className="text-xs text-muted-foreground text-center mt-2">
+        <p className="text-[10px] text-[#64748b] font-mono text-center mt-2 py-1 border-t border-[#1e2a3a]">
           Spread: {formatPrice(book.spread)}
         </p>
       )}

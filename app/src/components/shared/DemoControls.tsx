@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatUSD } from '@/lib/format';
 import { IS_DEMO_MODE } from '@/lib/demo';
 import { useToast } from '@/providers/ToastProvider';
+import type { OrderBookState, Position } from '@meridian/shared/types';
 
 // ---------------------------------------------------------------------------
 // Market-level controls (shown on trade page or market card)
@@ -17,9 +18,11 @@ import { useToast } from '@/providers/ToastProvider';
 
 interface DemoMarketControlsProps {
   readonly market: StrikeMarket;
+  readonly orderBook?: OrderBookState | null;
+  readonly position?: Position | null;
 }
 
-export function DemoMarketControls({ market }: DemoMarketControlsProps) {
+export function DemoMarketControls({ market, orderBook, position }: DemoMarketControlsProps) {
   // All hooks MUST be called before any early returns (Rules of Hooks)
   const { actions } = useDemoState();
   const { showToast } = useToast();
@@ -51,27 +54,45 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
     showToast(`Reopened ${market.ticker} market`, 'info');
   }, [actions, market.address, market.ticker, showToast]);
 
-  const handleMintPair = useCallback(() => {
-    actions.addPosition(market.address, 10, 10);
-    actions.deductBalance(10); // 10 pairs * $1 each
-    showToast(`Minted 10 pairs for ${market.ticker}`);
-  }, [actions, market.address, market.ticker, showToast]);
+  // Derive best YES/NO prices from order book, default to 0.50 each
+  const yesPrice = orderBook?.asks[0]?.price ?? 0.50;
+  const noPrice = 1 - yesPrice;
+
+  // Block minting the opposite side if already holding a position
+  const holdingYes = (position?.yesTokenBalance ?? 0) > 0;
+  const holdingNo = (position?.noTokenBalance ?? 0) > 0;
+  const canMintYes = !holdingNo;   // Can't mint YES if already holding NO
+  const canMintNo = !holdingYes;   // Can't mint NO if already holding YES
+
+  const handleMintYes = useCallback(() => {
+    const cost = 10 * yesPrice;
+    actions.addPosition(market.address, 10, 0);
+    actions.deductBalance(cost);
+    showToast(`Minted 10 YES for ${market.ticker} (cost: ${formatUSD(cost)})`);
+  }, [actions, market.address, market.ticker, yesPrice, showToast]);
+
+  const handleMintNo = useCallback(() => {
+    const cost = 10 * noPrice;
+    actions.addPosition(market.address, 0, 10);
+    actions.deductBalance(cost);
+    showToast(`Minted 10 NO for ${market.ticker} (cost: ${formatUSD(cost)})`);
+  }, [actions, market.address, market.ticker, noPrice, showToast]);
 
   if (!IS_DEMO_MODE) return null;
 
   if (market.status === MarketStatus.SETTLED) {
     return (
-      <div className="p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 space-y-2">
+      <div className="p-3 rounded-md border border-[#f59e0b]/30 bg-[#f59e0b]/5 space-y-2">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-yellow-600 border-yellow-500/30">
+          <Badge variant="warning" className="text-[10px] px-1.5 py-0">
             Demo
           </Badge>
-          <span className="text-xs text-muted-foreground">Market settled</span>
+          <span className="text-[10px] text-[#64748b]">Market settled</span>
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="w-full"
+          className="w-full border-[#f59e0b]/30 text-[#f59e0b] hover:bg-[#f59e0b]/10"
           onClick={handleReopen}
         >
           Reopen Market
@@ -81,26 +102,48 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
   }
 
   return (
-    <div className="p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 space-y-3">
+    <div className="p-3 rounded-md border border-[#f59e0b]/30 bg-[#f59e0b]/5 space-y-2">
       <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-yellow-600 border-yellow-500/30">
+        <Badge variant="warning" className="text-[10px] px-1.5 py-0">
           Demo Controls
         </Badge>
       </div>
 
-      {/* Mint pair */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full"
-        onClick={handleMintPair}
-      >
-        Mint 10 Pairs (YES + NO)
-      </Button>
+      {/* Mint YES / NO (mint pair + auto-sell opposite side) */}
+      <div className="grid grid-cols-2 gap-1.5">
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-[#00d26a]/30 text-[#00d26a] hover:bg-[#00d26a]/10 text-xs"
+          onClick={handleMintYes}
+          disabled={!canMintYes}
+          title={!canMintYes ? 'Sell your NO position first' : undefined}
+        >
+          Mint 10 YES
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-[#ff3b69]/30 text-[#ff3b69] hover:bg-[#ff3b69]/10 text-xs"
+          onClick={handleMintNo}
+          disabled={!canMintNo}
+          title={!canMintNo ? 'Sell your YES position first' : undefined}
+        >
+          Mint 10 NO
+        </Button>
+      </div>
+      <p className="text-[10px] text-[#64748b]">
+        YES @ {formatUSD(yesPrice)} | NO @ {formatUSD(noPrice)}
+        {(!canMintYes || !canMintNo) && (
+          <span className="block text-[#f59e0b] mt-0.5">
+            Close your {holdingYes ? 'YES' : 'NO'} position to mint the other side
+          </span>
+        )}
+      </p>
 
       {/* Force settle */}
-      <div className="space-y-2">
-        <label htmlFor="demo-settlement-price" className="text-xs text-muted-foreground">
+      <div className="space-y-1.5">
+        <label htmlFor="demo-settlement-price" className="text-[10px] text-[#64748b]">
           Settlement Price (strike: {formatUSD(market.strikePrice)})
         </label>
         <Input
@@ -110,14 +153,15 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
           step="0.01"
           value={settlementPrice}
           onChange={(e) => setSettlementPrice(e.target.value)}
-          className="h-8 text-sm"
+          className="h-7 text-xs"
         />
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5">
           <Button
             variant="yes"
             size="sm"
             disabled={!isValidPrice}
             onClick={handleSettleYes}
+            className="text-xs h-7"
           >
             Settle YES
           </Button>
@@ -126,12 +170,13 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
             size="sm"
             disabled={!isValidPrice}
             onClick={handleSettleNo}
+            className="text-xs h-7"
           >
             Settle NO
           </Button>
         </div>
         {isValidPrice && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[10px] text-[#64748b]">
             {parsedPrice >= market.strikePrice
               ? `${formatUSD(parsedPrice)} >= ${formatUSD(market.strikePrice)} = YES wins`
               : `${formatUSD(parsedPrice)} < ${formatUSD(market.strikePrice)} = NO wins`}
@@ -157,7 +202,7 @@ export function DemoToolbar() {
       variant="outline"
       size="sm"
       onClick={actions.resetAll}
-      className="text-yellow-600 border-yellow-500/30 hover:bg-yellow-500/10"
+      className="text-[#f59e0b] border-[#f59e0b]/30 hover:bg-[#f59e0b]/10 text-xs h-7"
     >
       Reset Demo
     </Button>

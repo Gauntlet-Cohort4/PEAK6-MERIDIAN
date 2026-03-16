@@ -36,7 +36,10 @@ export function getAvailableTrades(
   const holdingNo = position.noTokenBalance > 0;
   const sides: TradeSide[] = [];
 
-  if (holdingYes) {
+  if (holdingYes && holdingNo) {
+    // Holding both is transient (from mint) — only allow selling to close one side
+    sides.push(TradeSide.SELL_YES, TradeSide.SELL_NO);
+  } else if (holdingYes) {
     sides.push(TradeSide.BUY_YES, TradeSide.SELL_YES);
   } else if (holdingNo) {
     sides.push(TradeSide.BUY_NO, TradeSide.SELL_NO);

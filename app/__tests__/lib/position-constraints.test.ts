@@ -49,6 +49,16 @@ describe('getAvailableTrades', () => {
     expect(result.availableSides).toContain(TradeSide.BUY_YES);
     expect(result.availableSides).toContain(TradeSide.BUY_NO);
   });
+
+  it('only allows selling when holding both Yes and No (transient state)', () => {
+    const result = getAvailableTrades(makePosition(10, 10));
+    expect(result.availableSides).toContain(TradeSide.SELL_YES);
+    expect(result.availableSides).toContain(TradeSide.SELL_NO);
+    expect(result.availableSides).not.toContain(TradeSide.BUY_YES);
+    expect(result.availableSides).not.toContain(TradeSide.BUY_NO);
+    expect(result.holdingYes).toBe(true);
+    expect(result.holdingNo).toBe(true);
+  });
 });
 
 describe('isTradeSideAllowed', () => {

@@ -244,43 +244,6 @@ export const MOCK_PRICES: Record<string, PriceData> = {
   },
 };
 
+// Start with empty positions — user mints via Demo Controls
 export const MOCK_POSITIONS: readonly Position[] = [
-  {
-    marketAddress: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-    ticker: 'AAPL',
-    strikePrice: 230,
-    yesTokenBalance: 25,
-    noTokenBalance: 0,
-    avgEntryPrice: 0.6,
-    unrealizedPnl: 1.25,
-  },
-  {
-    marketAddress: '5nfGF5x3HK7d8sQKrEfZn4TqPLgQ8Y3JKiUqzsXkFVrR',
-    ticker: 'NVDA',
-    strikePrice: 140,
-    yesTokenBalance: 0,
-    noTokenBalance: 15,
-    avgEntryPrice: 0.4,
-    unrealizedPnl: -0.75,
-  },
-  // Settled winning position (YES won, user holds YES)
-  {
-    marketAddress: '4xWW5y9HBKR7d8sQNrEfZn4TqPLgQ8Y3JKiUqzsXkFVr',
-    ticker: 'AAPL',
-    strikePrice: 225,
-    yesTokenBalance: 10,
-    noTokenBalance: 0,
-    avgEntryPrice: 0.55,
-    unrealizedPnl: 4.5,
-  },
-  // Active position on META
-  {
-    marketAddress: '2mSS4z7HBKR7d8sQNrEfZn4TqPLgQ8Y3JKiUqzsXkFVr',
-    ticker: 'META',
-    strikePrice: 680,
-    yesTokenBalance: 20,
-    noTokenBalance: 0,
-    avgEntryPrice: 0.48,
-    unrealizedPnl: 2.0,
-  },
 ];

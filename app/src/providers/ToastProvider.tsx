@@ -104,11 +104,11 @@ function ToastContainer({
 
 const VARIANT_CLASSES: Record<ToastVariant, string> = {
   success:
-    'bg-green-900/90 text-green-100 border-green-700/50',
+    'bg-[#111827] text-[#e2e8f0] border-[#1e2a3a] border-l-[3px] border-l-[#00d26a]',
   error:
-    'bg-red-900/90 text-red-100 border-red-700/50',
+    'bg-[#111827] text-[#e2e8f0] border-[#1e2a3a] border-l-[3px] border-l-[#ff3b69]',
   info:
-    'bg-blue-900/90 text-blue-100 border-blue-700/50',
+    'bg-[#111827] text-[#e2e8f0] border-[#1e2a3a] border-l-[3px] border-l-[#3b82f6]',
 };
 
 function ToastItem({
@@ -127,15 +127,15 @@ function ToastItem({
 
   return (
     <div
-      className={`rounded-lg border px-4 py-3 text-sm shadow-lg animate-in slide-in-from-right-full ${VARIANT_CLASSES[toast.variant]}`}
+      className={`rounded-md border px-4 py-3 text-sm shadow-lg animate-in slide-in-from-right-full ${VARIANT_CLASSES[toast.variant]}`}
       role="status"
       data-testid="toast"
     >
       <div className="flex items-center justify-between gap-3">
-        <span>{toast.message}</span>
+        <span className="text-xs">{toast.message}</span>
         <button
           onClick={() => onDismiss(toast.id)}
-          className="text-current opacity-60 hover:opacity-100 transition-opacity"
+          className="text-[#64748b] hover:text-[#e2e8f0] transition-colors"
           aria-label="Dismiss notification"
         >
           &times;

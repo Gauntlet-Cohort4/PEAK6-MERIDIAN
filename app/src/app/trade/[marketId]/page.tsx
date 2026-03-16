@@ -1,6 +1,10 @@
 'use client';
 
 import { use, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import type { SupportedTicker } from '@meridian/shared/constants';
+
+const PriceChart = dynamic(() => import('@/components/charts/PriceChart'), { ssr: false });
 import { useMarkets } from '@/hooks/useMarkets';
 import { useOrderBooks } from '@/hooks/useOrderBooks';
 import { usePositions } from '@/hooks/usePositions';
@@ -47,29 +51,34 @@ export default function TradePage({ params }: TradePageProps) {
         </div>
       ) : !market ? (
         <div className="container mx-auto px-4 py-8">
-          <p className="text-center text-muted-foreground">Market not found</p>
+          <p className="text-center text-[#64748b]">Market not found</p>
         </div>
       ) : (
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 space-y-2">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">{market.ticker}</h1>
-            <Badge variant="outline">{market.status}</Badge>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>Strike: {formatUSD(market.strikePrice)}</span>
-            <span>
-              Live: <PriceDisplay ticker={market.ticker} />
-            </span>
-            <SettlementTimer />
-          </div>
+      <div className="container mx-auto px-4 py-4">
+        {/* Header row: inline horizontal layout */}
+        <div className="flex flex-wrap items-center gap-4 mb-4 pb-3 border-b border-[#1e2a3a]">
+          <h1 className="text-xl font-bold text-[#e2e8f0]">{market.ticker}</h1>
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-[#1e2a3a] text-[#64748b]">
+            {market.status}
+          </Badge>
+          <span className="text-xs text-[#64748b]">
+            Strike: <span className="font-mono text-[#e2e8f0]">{formatUSD(market.strikePrice)}</span>
+          </span>
+          <span className="text-xs text-[#64748b]">
+            Live: <PriceDisplay ticker={market.ticker} className="font-mono text-[#e2e8f0]" />
+          </span>
+          <SettlementTimer />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 2-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
+            {/* Price chart */}
+            <PriceChart ticker={market.ticker as SupportedTicker} strikePrice={market.strikePrice} height={350} />
+
             {market.status === MarketStatus.SETTLED ? (
-              <div className="rounded-lg border bg-muted/50 p-8 text-center">
-                <p className="text-muted-foreground">
+              <div className="rounded-md border border-[#1e2a3a] bg-[#111827] p-6 text-center">
+                <p className="text-[#64748b] text-sm">
                   Order book is closed. This market has been settled.
                 </p>
               </div>
@@ -79,7 +88,7 @@ export default function TradePage({ params }: TradePageProps) {
                 <OrderBook orderBookData={orderBook} perspective="no" />
               </>
             ) : (
-              <p className="text-center text-muted-foreground py-8">
+              <p className="text-center text-[#64748b] py-8 text-sm">
                 No order book data available
               </p>
             )}
@@ -87,22 +96,22 @@ export default function TradePage({ params }: TradePageProps) {
 
           <div className="space-y-4">
             {market.status === MarketStatus.SETTLED ? (
-              <div className="rounded-lg border bg-muted/50 p-6 text-center space-y-3">
-                <Badge variant="outline" className="text-base px-4 py-1">
+              <div className="rounded-md border border-[#1e2a3a] bg-[#111827] p-4 text-center space-y-2">
+                <Badge variant="outline" className="text-sm px-3 py-0.5 border-[#1e2a3a] text-[#e2e8f0]">
                   Market Settled
                 </Badge>
                 {market.settlementPrice !== null && (
-                  <p className="text-sm text-muted-foreground">
-                    Settlement price: {formatUSD(market.settlementPrice)}
+                  <p className="text-xs text-[#64748b]">
+                    Settlement price: <span className="font-mono text-[#e2e8f0]">{formatUSD(market.settlementPrice)}</span>
                   </p>
                 )}
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-[#64748b]">
                   {market.settlementPrice !== null &&
                   market.settlementPrice >= market.strikePrice
                     ? 'YES wins - price closed at or above the strike'
                     : 'NO wins - price closed below the strike'}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] text-[#64748b]">
                   Visit your portfolio to redeem winning positions.
                 </p>
               </div>
@@ -115,7 +124,7 @@ export default function TradePage({ params }: TradePageProps) {
                 defaultPrice={orderBook?.asks[0]?.price ?? 0.5}
               />
             )}
-            <DemoMarketControls market={market} />
+            <DemoMarketControls market={market} orderBook={orderBook} position={position} />
           </div>
         </div>
       </div>

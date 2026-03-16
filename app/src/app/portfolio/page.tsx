@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { usePositions } from '@/hooks/usePositions';
 import { useMarkets } from '@/hooks/useMarkets';
 import { useTradeActions } from '@/hooks/useTradeActions';
@@ -25,7 +25,10 @@ export default function PortfolioPage() {
   const isLoading = positionsLoading || marketsLoading;
 
   // Cross-reference positions with markets (immutable map)
-  const marketMap = new Map(markets.map((m) => [m.address, m]));
+  const marketMap = useMemo(
+    () => new Map(markets.map((m) => [m.address, m])),
+    [markets],
+  );
 
   // Split into active and settled
   const activePositions = positions.filter((p) => {
@@ -73,30 +76,25 @@ export default function PortfolioPage() {
           <LoadingSpinner size="lg" className="py-16" />
         </div>
       ) : (
-      <div className="container mx-auto px-4 py-8">
-        <div className="space-y-2 mb-8">
-          <h1 className="text-3xl font-bold">Portfolio</h1>
-          <p className="text-muted-foreground">
-            Your positions and redemptions
-          </p>
-        </div>
+      <div className="container mx-auto px-4 py-6">
+        <h1 className="text-2xl font-bold text-[#e2e8f0] mb-6">Portfolio</h1>
 
         {positions.length === 0 ? (
           <div className="text-center py-16 space-y-4">
-            <p className="text-muted-foreground">No open positions</p>
+            <p className="text-[#64748b] text-sm">No open positions</p>
             <Link href="/markets">
-              <Button>Browse Markets</Button>
+              <Button className="bg-[#3b82f6] hover:bg-[#2563eb] text-white">Browse Markets</Button>
             </Link>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Settled positions that can be redeemed */}
             {settledPositions.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">
+                <h2 className="text-sm font-semibold text-[#e2e8f0] uppercase tracking-wider mb-3">
                   Settled - Ready to Redeem
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {settledPositions.map((pos) => (
                     <PositionCard
                       key={pos.marketAddress}
@@ -115,8 +113,10 @@ export default function PortfolioPage() {
             {/* Active positions */}
             {activePositions.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">Active Positions</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <h2 className="text-sm font-semibold text-[#e2e8f0] uppercase tracking-wider mb-3">
+                  Active Positions
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {activePositions.map((pos) => (
                     <PositionCard
                       key={pos.marketAddress}

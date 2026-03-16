@@ -16,6 +16,7 @@ import { isTradeSideAllowed } from '@/lib/position-constraints';
 import { IS_DEMO_MODE } from '@/lib/demo';
 import { useDemoState } from '@/providers/DemoStateProvider';
 import { useToast } from '@/providers/ToastProvider';
+import { cn } from '@/lib/cn';
 
 interface TradePanelProps {
   readonly market: StrikeMarket;
@@ -53,7 +54,17 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
   const isAllowed = isTradeSideAllowed(selectedSide, position);
   const isMarketOrder = orderType === 'market';
   const priceValid = isMarketOrder || parsedPrice > 0;
-  const canSubmit = parsedSize > 0 && priceValid && isAllowed && !isSubmitting && (IS_DEMO_MODE || !!walletPublicKey);
+
+  // Max sellable quantity based on token holdings
+  const isSell = selectedSide === TradeSide.SELL_YES || selectedSide === TradeSide.SELL_NO;
+  const maxSellSize = selectedSide === TradeSide.SELL_YES
+    ? (position?.yesTokenBalance ?? 0)
+    : selectedSide === TradeSide.SELL_NO
+      ? (position?.noTokenBalance ?? 0)
+      : Infinity;
+  const sizeExceedsHolding = isSell && parsedSize > maxSellSize;
+
+  const canSubmit = parsedSize > 0 && priceValid && isAllowed && !isSubmitting && !sizeExceedsHolding && (IS_DEMO_MODE || !!walletPublicKey);
 
   const effectivePrice = isMarketOrder ? 0.50 : parsedPrice;
 
@@ -75,14 +86,18 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
       const sideLabel = TRADE_TABS.find((t) => t.value === selectedSide)?.label ?? selectedSide;
       showToast(`${sideLabel}: ${parsedSize} contracts on ${market.ticker}`);
 
-      // In demo mode, update the balance
+      // In demo mode, update the balance and position
       if (IS_DEMO_MODE) {
         if (selectedSide === TradeSide.BUY_YES) {
-          // Minting a pair costs $1 per contract
           demoActions.deductBalance(parsedSize);
         } else if (selectedSide === TradeSide.BUY_NO) {
-          // Buying NO costs contracts * price
           demoActions.deductBalance(parsedSize * effectivePrice);
+        } else if (selectedSide === TradeSide.SELL_YES) {
+          demoActions.redeemPosition(market.address, true, parsedSize);
+          demoActions.creditBalance(parsedSize * effectivePrice);
+        } else if (selectedSide === TradeSide.SELL_NO) {
+          demoActions.redeemPosition(market.address, false, parsedSize);
+          demoActions.creditBalance(parsedSize * effectivePrice);
         }
       }
 
@@ -107,14 +122,24 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
   }, [canSubmit, confirmation, selectedSide, parsedSize, effectivePrice, market]);
 
   return (
-    <div className="space-y-4" data-testid="trade-panel">
+    <div className="bg-[#111827] border border-[#1e2a3a] rounded-md p-3 space-y-3" data-testid="trade-panel">
       <Tabs
         value={selectedSide}
         onValueChange={(v) => setSelectedSide(v as TradeSide)}
       >
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-4 bg-[#0a0e17] rounded-md p-0.5 h-auto">
           {TRADE_TABS.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value}>
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              className={cn(
+                'text-xs py-1.5 rounded-sm font-medium transition-all data-[state=active]:shadow-none',
+                'data-[state=inactive]:text-[#64748b] data-[state=inactive]:bg-transparent',
+                (tab.value === TradeSide.BUY_YES || tab.value === TradeSide.SELL_NO)
+                  ? 'data-[state=active]:bg-[#00d26a]/10 data-[state=active]:text-[#00d26a]'
+                  : 'data-[state=active]:bg-[#ff3b69]/10 data-[state=active]:text-[#ff3b69]',
+              )}
+            >
               {tab.label}
             </TabsTrigger>
           ))}
@@ -122,50 +147,71 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
 
         {TRADE_TABS.map((tab) => (
           <TabsContent key={tab.value} value={tab.value}>
-            <div className="space-y-4 pt-2">
+            <div className="space-y-3 pt-2">
               <PositionConstraints position={position} selectedSide={tab.value} />
 
-              <div className="space-y-2">
-                <label htmlFor="trade-size-input" className="text-sm font-medium">Contracts</label>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="trade-size-input" className="text-xs font-medium text-[#64748b]">Contracts</label>
+                  {isSell && maxSellSize > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSize(String(maxSellSize))}
+                      className="text-[10px] text-[#3b82f6] hover:text-[#60a5fa] transition-colors"
+                    >
+                      Max: {maxSellSize}
+                    </button>
+                  )}
+                </div>
                 <Input
                   id="trade-size-input"
                   type="number"
                   placeholder="0"
                   min="1"
+                  max={isSell ? maxSellSize : undefined}
                   step="1"
                   value={size}
                   onChange={(e) => setSize(e.target.value)}
                   data-testid="size-input"
+                  className="font-mono"
                 />
               </div>
 
-              <div className="space-y-2">
-                <span className="text-sm font-medium">Order Type</span>
-                <div className="flex gap-2">
-                  <Button
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-[#64748b]">Order Type</span>
+                <div className="flex gap-1.5">
+                  <button
                     type="button"
-                    variant={orderType === 'market' ? 'default' : 'outline'}
-                    size="sm"
                     onClick={() => setOrderType('market')}
+                    className={cn(
+                      'px-3 py-1 rounded-sm text-xs font-medium transition-all border',
+                      orderType === 'market'
+                        ? 'bg-[#3b82f6] text-white border-[#3b82f6]'
+                        : 'bg-transparent text-[#64748b] border-[#1e2a3a] hover:text-[#e2e8f0]',
+                    )}
                     data-testid="order-type-market"
                   >
                     Market
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="button"
-                    variant={orderType === 'limit' ? 'default' : 'outline'}
-                    size="sm"
                     onClick={() => setOrderType('limit')}
+                    className={cn(
+                      'px-3 py-1 rounded-sm text-xs font-medium transition-all border',
+                      orderType === 'limit'
+                        ? 'bg-[#3b82f6] text-white border-[#3b82f6]'
+                        : 'bg-transparent text-[#64748b] border-[#1e2a3a] hover:text-[#e2e8f0]',
+                    )}
                     data-testid="order-type-limit"
                   >
                     Limit
-                  </Button>
+                  </button>
                 </div>
               </div>
 
               {orderType === 'limit' && (
-                <div className="space-y-2">
-                  <label htmlFor="trade-price-input" className="text-sm font-medium">Limit Price</label>
+                <div className="space-y-1">
+                  <label htmlFor="trade-price-input" className="text-xs font-medium text-[#64748b]">Limit Price</label>
                   <Input
                     id="trade-price-input"
                     type="number"
@@ -176,6 +222,7 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     data-testid="price-input"
+                    className="font-mono"
                   />
                 </div>
               )}
@@ -190,13 +237,19 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
                 />
               )}
 
+              {sizeExceedsHolding && (
+                <p className="text-[11px] text-[#ff3b69]">
+                  You only hold {maxSellSize} — reduce size or click Max
+                </p>
+              )}
+
               <Button
-                className="w-full"
-                variant={
-                  tab.value === TradeSide.BUY_YES || tab.value === TradeSide.SELL_NO
-                    ? 'yes'
-                    : 'no'
-                }
+                className={cn(
+                  'w-full font-semibold text-sm',
+                  (tab.value === TradeSide.BUY_YES || tab.value === TradeSide.SELL_NO)
+                    ? 'bg-[#00d26a] hover:bg-[#00d26a]/90 text-white shadow-[0_0_12px_rgba(0,210,106,0.2)]'
+                    : 'bg-[#ff3b69] hover:bg-[#ff3b69]/90 text-white shadow-[0_0_12px_rgba(255,59,105,0.2)]',
+                )}
                 disabled={!canSubmit}
                 onClick={handleTradeClick}
                 data-testid="submit-trade-button"

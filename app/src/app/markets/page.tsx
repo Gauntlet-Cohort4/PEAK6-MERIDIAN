@@ -22,12 +22,14 @@ export default function MarketsPage() {
 
   return (
     <ErrorBoundary>
-      <div className="container mx-auto px-4 py-8">
-        <div className="space-y-2 mb-8">
-          <h1 className="text-3xl font-bold">Markets</h1>
-          <p className="text-muted-foreground">
-            Browse active binary option contracts. Click a market to trade.
-          </p>
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center gap-3 mb-6">
+          <h1 className="text-2xl font-bold text-[#e2e8f0]">Markets</h1>
+          {!isLoading && markets.length > 0 && (
+            <span className="bg-[#3b82f6]/10 text-[#3b82f6] text-xs font-semibold px-2 py-0.5 rounded-full">
+              {markets.length}
+            </span>
+          )}
         </div>
 
         {isLoading ? (
@@ -35,11 +37,11 @@ export default function MarketsPage() {
             <LoadingSpinner />
           </div>
         ) : error ? (
-          <p className="text-center text-destructive py-8">
+          <p className="text-center text-[#ff3b69] py-8">
             Failed to load markets: {error}
           </p>
         ) : markets.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
+          <p className="text-center text-[#64748b] py-8">
             No markets available yet. Check back during trading hours.
           </p>
         ) : (

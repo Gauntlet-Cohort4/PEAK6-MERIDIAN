@@ -3,17 +3,17 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/cn';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:ring-offset-2 focus:ring-offset-[#0a0e17]',
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
-        outline: 'text-foreground',
-        yes: 'border-transparent bg-yes-light text-yes',
-        no: 'border-transparent bg-no-light text-no',
-        warning: 'border-transparent bg-yellow-100 text-yellow-800',
+        default: 'border-[#3b82f640] bg-[#3b82f620] text-[#3b82f6]',
+        secondary: 'border-[#1e2a3a] bg-[#111827] text-[#e2e8f0]',
+        destructive: 'border-[#ff3b6940] bg-[#ff3b6920] text-[#ff3b69]',
+        outline: 'border-[#1e2a3a] text-[#64748b]',
+        yes: 'border-[#00d26a40] bg-[#00d26a20] text-[#00d26a]',
+        no: 'border-[#ff3b6940] bg-[#ff3b6920] text-[#ff3b69]',
+        warning: 'border-[#f59e0b40] bg-[#f59e0b20] text-[#f59e0b]',
       },
     },
     defaultVariants: {

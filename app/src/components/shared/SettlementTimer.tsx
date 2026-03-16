@@ -10,9 +10,9 @@ interface SettlementTimerProps {
 }
 
 const statusColors: Record<TimerStatus, string> = {
-  trading: 'text-yes',
-  settling: 'text-yellow-600',
-  closed: 'text-muted-foreground',
+  trading: 'text-[#00d26a]',
+  settling: 'text-[#f59e0b]',
+  closed: 'text-[#64748b]',
 };
 
 const statusBadges: Record<TimerStatus, string> = {
@@ -26,16 +26,17 @@ export function SettlementTimer({ className }: SettlementTimerProps) {
 
   return (
     <div
-      className={cn('flex items-center gap-2 text-sm', className)}
+      className={cn('flex items-center gap-1.5 text-xs', className)}
       data-testid="settlement-timer"
     >
-      <Clock className={cn('h-4 w-4', statusColors[status])} />
+      <Clock className={cn('h-3 w-3', statusColors[status])} />
       <Badge
         variant={status === 'trading' ? 'yes' : status === 'settling' ? 'warning' : 'secondary'}
+        className="text-[10px] px-1.5 py-0"
       >
         {statusBadges[status]}
       </Badge>
-      <span className={statusColors[status]}>{timeString}</span>
+      <span className={cn('font-mono', statusColors[status])}>{timeString}</span>
     </div>
   );
 }

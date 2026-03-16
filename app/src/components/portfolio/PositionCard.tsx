@@ -3,7 +3,6 @@
 import { memo } from 'react';
 import { MarketStatus, TradeSide } from '@meridian/shared/types';
 import type { Position, StrikeMarket } from '@meridian/shared/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatUSD, formatPrice } from '@/lib/format';
@@ -70,87 +69,99 @@ export const PositionCard = memo(function PositionCard({ pos, market, onRedeem, 
   const payout = isWinner ? getWinningAmount(pos, outcome) : 0;
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{pos.ticker}</CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant={isYes ? 'yes' : 'no'}>
-              {isYes ? 'Yes' : 'No'}
+    <div
+      className={cn(
+        'bg-[#111827] border border-[#1e2a3a] rounded-md p-3',
+        'border-l-[3px]',
+        isYes ? 'border-l-[#00d26a]' : 'border-l-[#ff3b69]',
+      )}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-bold text-[#e2e8f0]">{pos.ticker}</span>
+        <div className="flex items-center gap-1.5">
+          <Badge variant={isYes ? 'yes' : 'no'}>
+            {isYes ? 'Yes' : 'No'}
+          </Badge>
+          {isSettled && (
+            <Badge variant={isWinner ? 'yes' : 'destructive'}>
+              {isWinner ? 'Winner' : 'Lost'}
             </Badge>
-            {isSettled && (
-              <Badge variant={isWinner ? 'yes' : 'destructive'}>
-                {isWinner ? 'Winner' : 'Lost'}
-              </Badge>
-            )}
-          </div>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Strike: {formatUSD(pos.strikePrice)}
-        </p>
-        {isSettled &&
-          market?.settlementPrice !== null &&
-          market?.settlementPrice !== undefined && (
-            <p className="text-sm text-muted-foreground">
-              Settled at: {formatUSD(market.settlementPrice)}
-            </p>
           )}
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Qty</span>
-          <span className="font-mono">{quantity}</span>
+        </div>
+      </div>
+
+      <p className="text-[10px] text-[#64748b] mb-1 font-mono">
+        Strike: {formatUSD(pos.strikePrice)}
+      </p>
+      {isSettled &&
+        market?.settlementPrice !== null &&
+        market?.settlementPrice !== undefined && (
+          <p className="text-[10px] text-[#64748b] mb-2 font-mono">
+            Settled at: {formatUSD(market.settlementPrice)}
+          </p>
+        )}
+
+      {/* Stats */}
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between">
+          <span className="text-[#64748b]">Qty</span>
+          <span className="font-mono text-[#e2e8f0]">{quantity}</span>
         </div>
         {pos.avgEntryPrice > 0 ? (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Avg Entry</span>
-            <span className="font-mono">{formatPrice(pos.avgEntryPrice)}</span>
+          <div className="flex justify-between">
+            <span className="text-[#64748b]">Avg Entry</span>
+            <span className="font-mono text-[#e2e8f0]">{formatPrice(pos.avgEntryPrice)}</span>
           </div>
         ) : (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Avg Entry</span>
-            <span className="font-mono text-muted-foreground">N/A</span>
+          <div className="flex justify-between">
+            <span className="text-[#64748b]">Avg Entry</span>
+            <span className="font-mono text-[#64748b]">N/A</span>
           </div>
         )}
         {isSettled ? (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Payout</span>
+          <div className="flex justify-between">
+            <span className="text-[#64748b]">Payout</span>
             <span
               className={cn(
                 'font-mono font-medium',
-                isWinner ? 'text-yes' : 'text-no',
+                isWinner ? 'text-[#00d26a]' : 'text-[#ff3b69]',
               )}
             >
               {isWinner ? formatUSD(payout) : '$0.00'}
             </span>
           </div>
         ) : (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Status</span>
-            <span className="text-muted-foreground">Awaiting settlement</span>
+          <div className="flex justify-between">
+            <span className="text-[#64748b]">Status</span>
+            <span className="text-[#64748b]">Awaiting settlement</span>
           </div>
         )}
+      </div>
 
-        {isSettled && isWinner && onRedeem && outcome !== null ? (
+      {/* Actions */}
+      {isSettled && isWinner && onRedeem && outcome !== null ? (
+        <Button
+          size="sm"
+          className="w-full mt-3 bg-[#00d26a] hover:bg-[#00d26a]/90 text-white font-semibold shadow-[0_0_12px_rgba(0,210,106,0.25)]"
+          disabled={isRedeeming}
+          onClick={() =>
+            onRedeem(pos.marketAddress, getRedeemSide(outcome), payout)
+          }
+        >
+          {isRedeeming ? 'Redeeming...' : `Redeem ${formatUSD(payout)} USDC`}
+        </Button>
+      ) : !isSettled ? (
+        <Link href={`/trade/${pos.marketAddress}`}>
           <Button
-            variant="yes"
+            variant="outline"
             size="sm"
-            className="w-full mt-2"
-            disabled={isRedeeming}
-            onClick={() =>
-              onRedeem(pos.marketAddress, getRedeemSide(outcome), payout)
-            }
+            className="w-full mt-3 border-[#1e2a3a] text-[#64748b] hover:text-[#e2e8f0] hover:border-[#3b82f6]/50"
           >
-            {isRedeeming ? 'Redeeming...' : `Redeem ${formatUSD(payout)} USDC`}
+            Trade
           </Button>
-        ) : !isSettled ? (
-          <Link href={`/trade/${pos.marketAddress}`}>
-            <Button variant="outline" size="sm" className="w-full mt-2">
-              Trade
-            </Button>
-          </Link>
-        ) : null}
-      </CardContent>
-    </Card>
+        </Link>
+      ) : null}
+    </div>
   );
 });
