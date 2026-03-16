@@ -1784,6 +1784,95 @@
       ]
     },
     {
+      "name": "set_phoenix_market",
+      "docs": [
+        "Updates the Phoenix market address on a strike market (admin only)."
+      ],
+      "discriminator": [
+        149,
+        232,
+        96,
+        210,
+        184,
+        1,
+        129,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "docs": [
+            "The program admin."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config PDA."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "strike_market",
+          "docs": [
+            "The strike market to update."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.ticker",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.strike_price",
+                "account": "StrikeMarket"
+              },
+              {
+                "kind": "account",
+                "path": "strike_market.trading_date",
+                "account": "StrikeMarket"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "phoenix_market",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "settle_market",
       "docs": [
         "Settles a market using the Pyth oracle price."
@@ -2153,6 +2242,11 @@
       "code": 6021,
       "name": "ProgramNotPaused",
       "msg": "Program not paused"
+    },
+    {
+      "code": 6022,
+      "name": "VaultInvariantViolation",
+      "msg": "Vault invariant violation"
     }
   ],
   "types": [

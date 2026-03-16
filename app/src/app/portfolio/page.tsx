@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { PositionCard } from '@/components/portfolio/PositionCard';
+import { useToast } from '@/providers/ToastProvider';
+import { formatUSD } from '@/lib/format';
 import Link from 'next/link';
 
 export default function PortfolioPage() {
@@ -17,6 +19,7 @@ export default function PortfolioPage() {
   const { markets, isLoading: marketsLoading } = useMarkets();
   const { submitOrder, isSubmitting } = useTradeActions();
   const { actions: demoActions, isDemoMode } = useDemoState();
+  const { showToast } = useToast();
   const [redeemingMarket, setRedeemingMarket] = useState<string | null>(null);
 
   const isLoading = positionsLoading || marketsLoading;
@@ -50,14 +53,17 @@ export default function PortfolioPage() {
         if (isDemoMode) {
           const isYes = side === TradeSide.REDEEM_YES;
           demoActions.redeemPosition(marketAddress, isYes, amount);
+          demoActions.creditBalance(amount);
         }
+        showToast(`Redeemed ${formatUSD(amount)} USDC`);
       } catch (err) {
-        console.error('Redeem failed:', err);
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        showToast(`Redeem failed: ${message}`, 'error');
       } finally {
         setRedeemingMarket(null);
       }
     },
-    [submitOrder],
+    [submitOrder, isDemoMode, demoActions, showToast],
   );
 
   return (

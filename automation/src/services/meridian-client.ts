@@ -14,7 +14,9 @@ import {
   PublicKey,
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
+  TransactionInstruction,
 } from '@solana/web3.js';
+import type { Signer } from '@solana/web3.js';
 import { MERIDIAN_CONFIG, type SupportedTicker } from '@meridian/shared/constants.js';
 import { Logger } from '@meridian/shared/logger.js';
 import { debugLog } from '@meridian/shared/debug.js';
@@ -46,6 +48,12 @@ export interface SettleMarketParams {
   readonly pythPriceAccount: string;
 }
 
+/** Parameters for setting the Phoenix market address on a strike market. */
+export interface SetPhoenixMarketParams {
+  readonly marketAddress: string;
+  readonly phoenixMarketAddress: string;
+}
+
 /** Parameters for admin force-settlement. */
 export interface AdminSettleParams {
   readonly marketAddress: string;
@@ -53,10 +61,23 @@ export interface AdminSettleParams {
   readonly settlementPrice: number;
 }
 
+/** Result of building a createStrikeMarket instruction. */
+export interface CreateStrikeMarketIxResult {
+  /** The built instruction (not yet sent). */
+  readonly instruction: TransactionInstruction;
+  /** The derived strike market PDA address. */
+  readonly strikeMarketAddress: string;
+  /** The derived YES mint PDA address. */
+  readonly yesMintAddress: string;
+}
+
 /** Typed client interface for the Meridian Anchor program. */
 export interface MeridianClient {
   /** Create a new strike market and return the tx signature. */
   createStrikeMarket(params: CreateStrikeMarketParams): Promise<string>;
+
+  /** Set the Phoenix market address on a strike market, return tx signature. */
+  setPhoenixMarket(params: SetPhoenixMarketParams): Promise<string>;
 
   /** Settle a market using Pyth oracle price, return tx signature. */
   settleMarket(params: SettleMarketParams): Promise<string>;
@@ -66,6 +87,15 @@ export interface MeridianClient {
 
   /** Query on-chain for unsettled markets and return them. */
   getActiveMarkets(): Promise<readonly ActiveMarket[]>;
+
+  /** Build a createStrikeMarket instruction without sending. Uses PublicKey.default as placeholder phoenix address. */
+  buildCreateStrikeMarketIx(params: Omit<CreateStrikeMarketParams, 'phoenixMarketAddress'>): Promise<CreateStrikeMarketIxResult>;
+
+  /** Build a setPhoenixMarket instruction without sending. */
+  buildSetPhoenixMarketIx(params: SetPhoenixMarketParams): Promise<TransactionInstruction>;
+
+  /** Send multiple instructions as a single atomic transaction. */
+  sendInstructions(instructions: readonly TransactionInstruction[], extraSigners?: readonly Signer[]): Promise<string>;
 }
 
 /** Dependencies for the Meridian client. */
@@ -185,6 +215,24 @@ export function createStubMeridianClient(deps: MeridianClientDeps): MeridianClie
     return signature;
   }
 
+  async function setPhoenixMarket(params: SetPhoenixMarketParams): Promise<string> {
+    logger.info('setPhoenixMarket', `[STUB] Setting Phoenix market on ${params.marketAddress}`, {
+      context: {
+        marketAddress: params.marketAddress,
+        phoenixMarketAddress: params.phoenixMarketAddress,
+        programId,
+      },
+    });
+
+    const signature = makeMockSignature('set-phoenix');
+
+    logger.info('setPhoenixMarket', `[STUB] Phoenix market set on ${params.marketAddress}`, {
+      context: { signature, marketAddress: params.marketAddress },
+    });
+
+    return signature;
+  }
+
   async function settleMarket(params: SettleMarketParams): Promise<string> {
     logger.info('settleMarket', `[STUB] Settling market: ${params.marketAddress}`, {
       context: {
@@ -230,7 +278,42 @@ export function createStubMeridianClient(deps: MeridianClientDeps): MeridianClie
     return Promise.resolve(Object.freeze([]));
   }
 
-  return Object.freeze({ createStrikeMarket, settleMarket, adminSettle, getActiveMarkets });
+  async function buildCreateStrikeMarketIx(
+    params: Omit<CreateStrikeMarketParams, 'phoenixMarketAddress'>,
+  ): Promise<CreateStrikeMarketIxResult> {
+    const dummyIx = new TransactionInstruction({
+      programId: PublicKey.default,
+      keys: [],
+      data: Buffer.alloc(0),
+    });
+    return Object.freeze({
+      instruction: dummyIx,
+      strikeMarketAddress: `stub-market-${params.ticker}-${params.strikePrice}`,
+      yesMintAddress: `stub-yes-mint-${params.ticker}-${params.strikePrice}`,
+    });
+  }
+
+  async function buildSetPhoenixMarketIx(
+    _params: SetPhoenixMarketParams,
+  ): Promise<TransactionInstruction> {
+    return new TransactionInstruction({
+      programId: PublicKey.default,
+      keys: [],
+      data: Buffer.alloc(0),
+    });
+  }
+
+  async function sendInstructions(
+    _instructions: readonly TransactionInstruction[],
+    _extraSigners?: readonly Signer[],
+  ): Promise<string> {
+    return makeMockSignature('atomic');
+  }
+
+  return Object.freeze({
+    createStrikeMarket, setPhoenixMarket, settleMarket, adminSettle, getActiveMarkets,
+    buildCreateStrikeMarketIx, buildSetPhoenixMarketIx, sendInstructions,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -334,6 +417,52 @@ export function createRealMeridianClient(deps: RealMeridianClientDeps): Meridian
         `Failed to create strike market for ${params.ticker} @ $${params.strikePrice}`,
         err,
         { ticker: params.ticker, strikePrice: params.strikePrice },
+      );
+    }
+  }
+
+  async function setPhoenixMarket(params: SetPhoenixMarketParams): Promise<string> {
+    logger.info('setPhoenixMarket', `Setting Phoenix market on ${params.marketAddress}`, {
+      context: {
+        marketAddress: params.marketAddress,
+        phoenixMarketAddress: params.phoenixMarketAddress,
+      },
+    });
+
+    try {
+      const strikeMarketPubkey = new PublicKey(params.marketAddress);
+      const phoenixMarketPubkey = new PublicKey(params.phoenixMarketAddress);
+
+      // Fetch the strike market account to read its ticker for PDA derivation
+      const strikeMarketAccount = await program.account['strikeMarket'].fetch(
+        strikeMarketPubkey,
+      );
+      const ticker = (strikeMarketAccount as Record<string, unknown>)['ticker'] as string;
+
+      const [configPda] = deriveConfigPda(programPubkey);
+
+      const instruction = await program.methods
+        .setPhoenixMarket(phoenixMarketPubkey)
+        .accounts({
+          admin: adminKeypair.publicKey,
+          config: configPda,
+          strikeMarket: strikeMarketPubkey,
+        })
+        .instruction();
+
+      const signature = await transactionSender.sendAndConfirm(instruction, [adminKeypair]);
+
+      logger.info('setPhoenixMarket', `Phoenix market set on ${params.marketAddress}`, {
+        context: { signature, marketAddress: params.marketAddress, phoenixMarketAddress: params.phoenixMarketAddress },
+      });
+
+      return signature;
+    } catch (err) {
+      throw new MeridianError(
+        MeridianErrorCode.RPC_ERROR,
+        `Failed to set Phoenix market on ${params.marketAddress}`,
+        err,
+        { marketAddress: params.marketAddress, phoenixMarketAddress: params.phoenixMarketAddress },
       );
     }
   }
@@ -507,7 +636,76 @@ export function createRealMeridianClient(deps: RealMeridianClientDeps): Meridian
     }
   }
 
-  return Object.freeze({ createStrikeMarket, settleMarket, adminSettle, getActiveMarkets });
+  async function buildCreateStrikeMarketIx(
+    params: Omit<CreateStrikeMarketParams, 'phoenixMarketAddress'>,
+  ): Promise<CreateStrikeMarketIxResult> {
+    const strikePriceBN = new BN(params.strikePrice);
+    const tradingDateBN = new BN(params.tradingDate);
+
+    const [configPda] = deriveConfigPda(programPubkey);
+    const [tickerConfigPda] = deriveTickerConfigPda(params.ticker, programPubkey);
+    const [strikeMarketPda] = deriveStrikeMarketPda(
+      params.ticker, strikePriceBN, tradingDateBN, programPubkey,
+    );
+    const [yesMintPda] = deriveYesMintPda(strikeMarketPda, programPubkey);
+    const [noMintPda] = deriveNoMintPda(strikeMarketPda, programPubkey);
+    const [vaultPda] = deriveVaultPda(strikeMarketPda, programPubkey);
+
+    const instruction = await program.methods
+      .createStrikeMarket(strikePriceBN, tradingDateBN)
+      .accounts({
+        admin: adminKeypair.publicKey,
+        config: configPda,
+        tickerConfig: tickerConfigPda,
+        strikeMarket: strikeMarketPda,
+        yesMint: yesMintPda,
+        noMint: noMintPda,
+        usdcMint,
+        vault: vaultPda,
+        phoenixMarket: PublicKey.default,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: SYSVAR_RENT_PUBKEY,
+      })
+      .instruction();
+
+    return Object.freeze({
+      instruction,
+      strikeMarketAddress: strikeMarketPda.toBase58(),
+      yesMintAddress: yesMintPda.toBase58(),
+    });
+  }
+
+  async function buildSetPhoenixMarketIx(
+    params: SetPhoenixMarketParams,
+  ): Promise<TransactionInstruction> {
+    const strikeMarketPubkey = new PublicKey(params.marketAddress);
+    const phoenixMarketPubkey = new PublicKey(params.phoenixMarketAddress);
+    const [configPda] = deriveConfigPda(programPubkey);
+
+    return program.methods
+      .setPhoenixMarket(phoenixMarketPubkey)
+      .accounts({
+        admin: adminKeypair.publicKey,
+        config: configPda,
+        strikeMarket: strikeMarketPubkey,
+      })
+      .instruction();
+  }
+
+  async function sendInstructions(
+    instructions: readonly TransactionInstruction[],
+    extraSigners?: readonly Signer[],
+  ): Promise<string> {
+    const allSigners = [adminKeypair, ...(extraSigners ?? [])] as readonly Keypair[];
+    return transactionSender.sendAndConfirm([...instructions], allSigners);
+  }
+
+  return Object.freeze({
+    createStrikeMarket, setPhoenixMarket, settleMarket, adminSettle, getActiveMarkets,
+    buildCreateStrikeMarketIx, buildSetPhoenixMarketIx, sendInstructions,
+  });
 }
 
 // ---------------------------------------------------------------------------

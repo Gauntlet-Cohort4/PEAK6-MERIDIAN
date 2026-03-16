@@ -122,46 +122,59 @@ async function buildInstructionForOrder(
 /**
  * Build a stub transaction for demo mode preview.
  * Uses the sync builders which produce unsigned stubs.
+ * Returns the build result for validation.
  */
-function buildDemoTransactionForOrder(
+async function buildDemoTransactionForOrder(
   order: TradeOrder,
   wallet: WalletConnection,
-): void {
+): Promise<void> {
   switch (order.side) {
     case TradeSide.BUY_YES:
-      buildMintPairTransaction(
-        { marketAddress: order.marketAddress, amount: order.size },
-        wallet,
+      await Promise.resolve(
+        buildMintPairTransaction(
+          { marketAddress: order.marketAddress, amount: order.size },
+          wallet,
+        ),
       );
       break;
     case TradeSide.BUY_NO:
-      buildBuyNoTransaction(
-        { marketAddress: order.marketAddress, maxUsdc: order.size * order.price },
-        wallet,
+      await Promise.resolve(
+        buildBuyNoTransaction(
+          { marketAddress: order.marketAddress, maxUsdc: order.size * order.price },
+          wallet,
+        ),
       );
       break;
     case TradeSide.SELL_NO:
-      buildSellNoTransaction(
-        { marketAddress: order.marketAddress, amount: order.size },
-        wallet,
+      await Promise.resolve(
+        buildSellNoTransaction(
+          { marketAddress: order.marketAddress, amount: order.size },
+          wallet,
+        ),
       );
       break;
     case TradeSide.SELL_YES:
-      buildRedeemTransaction(
-        { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
-        wallet,
+      await Promise.resolve(
+        buildRedeemTransaction(
+          { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
+          wallet,
+        ),
       );
       break;
     case TradeSide.REDEEM_YES:
-      buildRedeemTransaction(
-        { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
-        wallet,
+      await Promise.resolve(
+        buildRedeemTransaction(
+          { marketAddress: order.marketAddress, tokenType: 'yes', amount: order.size },
+          wallet,
+        ),
       );
       break;
     case TradeSide.REDEEM_NO:
-      buildRedeemTransaction(
-        { marketAddress: order.marketAddress, tokenType: 'no', amount: order.size },
-        wallet,
+      await Promise.resolve(
+        buildRedeemTransaction(
+          { marketAddress: order.marketAddress, tokenType: 'no', amount: order.size },
+          wallet,
+        ),
       );
       break;
     default:
@@ -202,8 +215,8 @@ export function useTradeActions(): UseTradeActionsResult {
           }),
         };
 
-        // Run validation / account derivation but discard result
-        buildDemoTransactionForOrder(order, stubWallet);
+        // Run validation / account derivation (await to catch errors)
+        await buildDemoTransactionForOrder(order, stubWallet);
 
         // Simulate network latency
         await new Promise((resolve) => setTimeout(resolve, 500));

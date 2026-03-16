@@ -3,6 +3,7 @@ import '@/styles/globals.css';
 import { WalletProvider } from '@/providers/WalletProvider';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { DemoStateProvider } from '@/providers/DemoStateProvider';
+import { ToastProvider } from '@/providers/ToastProvider';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 
@@ -22,11 +23,13 @@ export default function RootLayout({
         <WalletProvider>
           <ThemeProvider>
             <DemoStateProvider>
-              <div className="flex min-h-screen flex-col">
-                <Header />
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </div>
+              <ToastProvider>
+                <div className="flex min-h-screen flex-col">
+                  <Header />
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                </div>
+              </ToastProvider>
             </DemoStateProvider>
           </ThemeProvider>
         </WalletProvider>

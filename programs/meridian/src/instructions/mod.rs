@@ -10,6 +10,7 @@ pub mod buy_no_market;
 pub mod buy_no_limit;
 pub mod sell_no;
 pub mod pause;
+pub mod set_phoenix_market;
 pub mod unpause;
 
 pub use initialize_config::*;
@@ -24,4 +25,5 @@ pub use buy_no_market::*;
 pub use buy_no_limit::*;
 pub use sell_no::*;
 pub use pause::*;
+pub use set_phoenix_market::*;
 pub use unpause::*;

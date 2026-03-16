@@ -38,7 +38,7 @@ function loadIdl(): Record<string, unknown> {
 
 /** The on-chain program address baked into the IDL. */
 export const PROGRAM_ID = new PublicKey(
-  'AiG9ZAw6625w5zUQRsfmWwqXRmYSZAJe9MRfjcJoEK9h',
+  'DkF63Re3EouN699gE3NvEnE1t7PuGC8UrYQEsbRAkEvE',
 );
 
 // ---------------------------------------------------------------------------

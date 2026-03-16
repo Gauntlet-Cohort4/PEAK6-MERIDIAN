@@ -8,6 +8,7 @@ import { OrderBook } from '@/components/trade/OrderBook';
 import { TradePanel } from '@/components/trade/TradePanel';
 import { PriceDisplay } from '@/components/shared/PriceDisplay';
 import { Badge } from '@/components/ui/badge';
+import { MarketStatus } from '@meridian/shared/types';
 import { formatUSD } from '@/lib/format';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { SettlementTimer } from '@/components/shared/SettlementTimer';
@@ -66,7 +67,13 @@ export default function TradePage({ params }: TradePageProps) {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
-            {orderBook ? (
+            {market.status === MarketStatus.SETTLED ? (
+              <div className="rounded-lg border bg-muted/50 p-8 text-center">
+                <p className="text-muted-foreground">
+                  Order book is closed. This market has been settled.
+                </p>
+              </div>
+            ) : orderBook ? (
               <>
                 <OrderBook orderBookData={orderBook} perspective="yes" />
                 <OrderBook orderBookData={orderBook} perspective="no" />
@@ -79,7 +86,27 @@ export default function TradePage({ params }: TradePageProps) {
           </div>
 
           <div className="space-y-4">
-            {positionsLoading ? (
+            {market.status === MarketStatus.SETTLED ? (
+              <div className="rounded-lg border bg-muted/50 p-6 text-center space-y-3">
+                <Badge variant="outline" className="text-base px-4 py-1">
+                  Market Settled
+                </Badge>
+                {market.settlementPrice !== null && (
+                  <p className="text-sm text-muted-foreground">
+                    Settlement price: {formatUSD(market.settlementPrice)}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  {market.settlementPrice !== null &&
+                  market.settlementPrice >= market.strikePrice
+                    ? 'YES wins - price closed at or above the strike'
+                    : 'NO wins - price closed below the strike'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Visit your portfolio to redeem winning positions.
+                </p>
+              </div>
+            ) : positionsLoading ? (
               <LoadingSpinner />
             ) : (
               <TradePanel

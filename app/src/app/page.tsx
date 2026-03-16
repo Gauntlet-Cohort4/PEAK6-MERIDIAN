@@ -30,14 +30,14 @@ export default function HomePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
         <div className="text-center space-y-3">
           <TrendingUp className="h-10 w-10 mx-auto text-primary" />
-          <h3 className="text-lg font-semibold">Real-Time Pricing</h3>
+          <h2 className="text-lg font-semibold">Real-Time Pricing</h2>
           <p className="text-sm text-muted-foreground">
             Live stock prices from Pyth Network oracle with sub-second updates.
           </p>
         </div>
         <div className="text-center space-y-3">
           <BarChart3 className="h-10 w-10 mx-auto text-primary" />
-          <h3 className="text-lg font-semibold">Phoenix Order Book</h3>
+          <h2 className="text-lg font-semibold">Phoenix Order Book</h2>
           <p className="text-sm text-muted-foreground">
             On-chain order matching via Phoenix DEX for transparent price
             discovery.
@@ -45,7 +45,7 @@ export default function HomePage() {
         </div>
         <div className="text-center space-y-3">
           <Shield className="h-10 w-10 mx-auto text-primary" />
-          <h3 className="text-lg font-semibold">Automated Settlement</h3>
+          <h2 className="text-lg font-semibold">Automated Settlement</h2>
           <p className="text-sm text-muted-foreground">
             Daily settlement at market close with oracle-verified outcomes.
           </p>

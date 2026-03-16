@@ -41,7 +41,7 @@ vi.mock('@solana/web3.js', () => {
 
 vi.mock('@coral-xyz/anchor', () => {
   const mockInstruction = vi.fn().mockResolvedValue({
-    programId: { toBase58: () => 'AiG9ZAw6625w5zUQRsfmWwqXRmYSZAJe9MRfjcJoEK9h' },
+    programId: { toBase58: () => 'DkF63Re3EouN699gE3NvEnE1t7PuGC8UrYQEsbRAkEvE' },
     keys: [],
     data: Buffer.alloc(16),
   });
@@ -51,7 +51,7 @@ vi.mock('@coral-xyz/anchor', () => {
 
   return {
     Program: vi.fn().mockImplementation(() => ({
-      programId: { toBase58: () => 'AiG9ZAw6625w5zUQRsfmWwqXRmYSZAJe9MRfjcJoEK9h' },
+      programId: { toBase58: () => 'DkF63Re3EouN699gE3NvEnE1t7PuGC8UrYQEsbRAkEvE' },
       methods: new Proxy({}, {
         get: () => mockMethodBuilder,
       }),
@@ -100,7 +100,7 @@ describe('buildMintPairTransaction', () => {
     );
 
     expect(result.transaction.instructions[0]?.programId).toBe(
-      'AiG9ZAw6625w5zUQRsfmWwqXRmYSZAJe9MRfjcJoEK9h',
+      'DkF63Re3EouN699gE3NvEnE1t7PuGC8UrYQEsbRAkEvE',
     );
   });
 

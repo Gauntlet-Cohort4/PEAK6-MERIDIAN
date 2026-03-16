@@ -21,6 +21,7 @@ interface DemoState {
   readonly markets: readonly StrikeMarket[];
   readonly positions: readonly Position[];
   readonly prices: Readonly<Record<string, PriceData>>;
+  readonly balance: number;
 }
 
 interface DemoActions {
@@ -44,6 +45,10 @@ interface DemoActions {
     isYes: boolean,
     amount: number,
   ) => void;
+  /** Deduct from the demo USDC balance (e.g., after a trade). */
+  readonly deductBalance: (amount: number) => void;
+  /** Credit to the demo USDC balance (e.g., after a redemption). */
+  readonly creditBalance: (amount: number) => void;
   /** Reset all demo state to initial values. */
   readonly resetAll: () => void;
 }
@@ -60,11 +65,14 @@ interface DemoContextValue {
 
 const DemoContext = createContext<DemoContextValue | null>(null);
 
+const INITIAL_DEMO_BALANCE = 10_000;
+
 function initialState(): DemoState {
   return {
     markets: [...MOCK_MARKETS],
     positions: [...MOCK_POSITIONS],
     prices: { ...MOCK_PRICES },
+    balance: INITIAL_DEMO_BALANCE,
   };
 }
 
@@ -181,6 +189,22 @@ export function DemoStateProvider({ children }: { readonly children: ReactNode }
     [],
   );
 
+  const deductBalance = useCallback((amount: number) => {
+    if (!isFinite(amount) || amount <= 0) return;
+    setState((prev) => ({
+      ...prev,
+      balance: Math.max(0, prev.balance - amount),
+    }));
+  }, []);
+
+  const creditBalance = useCallback((amount: number) => {
+    if (!isFinite(amount) || amount <= 0) return;
+    setState((prev) => ({
+      ...prev,
+      balance: prev.balance + amount,
+    }));
+  }, []);
+
   const resetAll = useCallback(() => {
     setState(initialState());
   }, []);
@@ -190,6 +214,8 @@ export function DemoStateProvider({ children }: { readonly children: ReactNode }
     reopenMarket,
     addPosition,
     redeemPosition,
+    deductBalance,
+    creditBalance,
     resetAll,
   };
 
@@ -212,12 +238,14 @@ export function useDemoState(): DemoContextValue {
     // Return a no-op fallback for non-demo mode
     return {
       isDemoMode: false,
-      state: { markets: [], positions: [], prices: {} },
+      state: { markets: [], positions: [], prices: {}, balance: 0 },
       actions: {
         settleMarket: () => {},
         reopenMarket: () => {},
         addPosition: () => {},
         redeemPosition: () => {},
+        deductBalance: () => {},
+        creditBalance: () => {},
         resetAll: () => {},
       },
     };

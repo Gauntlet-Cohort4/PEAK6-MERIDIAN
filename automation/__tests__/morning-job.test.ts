@@ -7,6 +7,7 @@ import { runMorningJob, type MorningJobDeps } from '../src/jobs/morning-job.js';
 import type { PriceServiceAdapter, TradingDayAdapter } from '@meridian/shared/adapters/types.js';
 import type { PriceData } from '@meridian/shared/types.js';
 import type { MeridianClient } from '../src/services/meridian-client.js';
+import type { AlertService } from '../src/services/alert-service.js';
 
 function createMockPriceData(price: number, feedId: string): PriceData {
   return Object.freeze({
@@ -33,15 +34,24 @@ function createMockDeps(overrides?: Partial<MorningJobDeps>): MorningJobDeps {
 
   const meridianClient: MeridianClient = {
     createStrikeMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
+    setPhoenixMarket: vi.fn().mockResolvedValue('set-phoenix-sig'),
     settleMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
     adminSettle: vi.fn().mockResolvedValue('mock-tx-sig'),
     getActiveMarkets: vi.fn().mockResolvedValue([]),
+    buildCreateStrikeMarketIx: vi.fn().mockResolvedValue({ instruction: {}, strikeMarketAddress: 'mock-addr', yesMintAddress: 'mock-yes-addr' }),
+    buildSetPhoenixMarketIx: vi.fn().mockResolvedValue({}),
+    sendInstructions: vi.fn().mockResolvedValue('mock-atomic-sig'),
+  };
+
+  const alertService: AlertService = {
+    sendAlert: vi.fn().mockResolvedValue(undefined),
   };
 
   return {
     priceService: overrides?.priceService ?? priceService,
     tradingDayService: overrides?.tradingDayService ?? tradingDayService,
     meridianClient: overrides?.meridianClient ?? meridianClient,
+    alertService: overrides?.alertService ?? alertService,
   };
 }
 

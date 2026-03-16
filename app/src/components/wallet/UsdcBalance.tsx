@@ -5,6 +5,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection } from '@solana/web3.js';
 import { deriveAta, USDC_MINT } from '@/lib/tx/program';
 import { IS_DEMO_MODE } from '@/lib/demo';
+import { useDemoState } from '@/providers/DemoStateProvider';
 
 /** Get the RPC connection URL from environment or default to devnet. */
 function getRpcUrl(): string {
@@ -30,10 +31,11 @@ export function UsdcBalance() {
   const { publicKey } = useWallet();
   const [balance, setBalance] = useState<number | null>(null);
   const connectionRef = useRef<Connection | null>(null);
+  const { state: demoState } = useDemoState();
 
   useEffect(() => {
     if (IS_DEMO_MODE) {
-      setBalance(10_000);
+      setBalance(demoState.balance);
       return;
     }
 
@@ -70,7 +72,7 @@ export function UsdcBalance() {
     return () => {
       cancelled = true;
     };
-  }, [publicKey]);
+  }, [publicKey, demoState.balance]);
 
   // Show nothing when wallet is not connected and not in demo mode
   if (balance === null) {

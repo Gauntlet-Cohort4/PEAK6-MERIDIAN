@@ -6,6 +6,8 @@
 
 import type { PriceServiceAdapter, TradingDayAdapter } from '@meridian/shared/adapters/types.js';
 import type { MeridianClient } from '../services/meridian-client.js';
+import type { AlertService } from '../services/alert-service.js';
+import type { PhoenixMarketFactory } from '../services/phoenix-market-factory.js';
 import { MERIDIAN_CONFIG, PYTH_FEED_IDS, type SupportedTicker } from '@meridian/shared/constants.js';
 import { PublicKey } from '@solana/web3.js';
 import { Logger } from '@meridian/shared/logger.js';
@@ -21,6 +23,12 @@ export interface MorningJobDeps {
   readonly priceService: PriceServiceAdapter;
   readonly tradingDayService: TradingDayAdapter;
   readonly meridianClient: MeridianClient;
+  readonly alertService: AlertService;
+  /** Optional Phoenix market factory. When provided, creates real Phoenix
+   *  order books for each strike market atomically via a single transaction. */
+  readonly phoenixMarketFactory?: PhoenixMarketFactory;
+  /** USDC mint address (needed for Phoenix market creation). */
+  readonly usdcMintAddress?: string;
 }
 
 /** Summary of the morning job execution. */
@@ -48,6 +56,14 @@ function getYesterdayCloseTimestamp(now: Date): number {
 
 /**
  * Process a single ticker: fetch price, calculate strikes, create markets.
+ *
+ * When a Phoenix factory + USDC mint are provided, creates the strike market,
+ * Phoenix order book, and link in a single atomic Solana transaction:
+ *   Ix 1: createStrikeMarket (creates YES/NO mints, placeholder phoenix address)
+ *   Ix 2+: Phoenix InitializeMarket (uses the YES mint just created in Ix 1)
+ *   Ix N: setPhoenixMarket (stores the real Phoenix address on the strike market)
+ *
+ * Without Phoenix factory, falls back to a single createStrikeMarket call.
  */
 async function processTicker(
   ticker: SupportedTicker,
@@ -77,6 +93,8 @@ async function processTicker(
     context: { ticker, strikes },
   });
 
+  const useAtomicPhoenix = !!(deps.phoenixMarketFactory && deps.usdcMintAddress);
+
   let created = 0;
   for (const strike of strikes) {
     debugLog('CRON_JOBS', 'morning-job', 'processTicker', `Creating market: ${ticker} @ $${strike}`, {
@@ -85,29 +103,62 @@ async function processTicker(
       tradingDate,
     });
 
-    // TODO: Replace with a real Phoenix DEX market address in production.
-    // Using SystemProgram address (11111...1) as a devnet placeholder since
-    // Phoenix DEX isn't live yet.
-    const phoenixMarketAddress = PublicKey.default.toBase58();
+    if (useAtomicPhoenix) {
+      // Atomic path: build all instructions, send as one transaction.
+      const { instruction: createIx, strikeMarketAddress, yesMintAddress } =
+        await deps.meridianClient.buildCreateStrikeMarketIx({
+          ticker,
+          strikePrice: strike,
+          tradingDate,
+        });
 
-    const signature = await withRetry(
-      () => deps.meridianClient.createStrikeMarket({
-        ticker,
-        strikePrice: strike,
-        tradingDate,
+      const { instructions: phoenixIxs, marketKeypair, phoenixMarketAddress } =
+        await deps.phoenixMarketFactory!.buildCreateMarketIxs(yesMintAddress, deps.usdcMintAddress!);
+
+      const setIx = await deps.meridianClient.buildSetPhoenixMarketIx({
+        marketAddress: strikeMarketAddress,
         phoenixMarketAddress,
-      }),
-      {
-        maxAttempts: 3,
-        initialDelayMs: 2000,
-        maxDelayMs: 10000,
-        operationName: `createStrikeMarket(${ticker}@$${strike})`,
-      },
-    );
+      });
 
-    logger.info('processTicker', `Market created: ${ticker} @ $${strike}`, {
-      context: { ticker, strike, signature },
-    });
+      await withRetry(
+        () => deps.meridianClient.sendInstructions(
+          [createIx, ...phoenixIxs, setIx],
+          [marketKeypair],
+        ),
+        {
+          maxAttempts: 3,
+          initialDelayMs: 2000,
+          maxDelayMs: 10000,
+          operationName: `atomicCreateMarket(${ticker}@$${strike})`,
+        },
+      );
+
+      logger.info('processTicker', `Market + Phoenix created atomically: ${ticker} @ $${strike}`, {
+        context: { ticker, strike, strikeMarket: strikeMarketAddress, phoenixMarket: phoenixMarketAddress },
+      });
+    } else {
+      // Fallback: create strike market with placeholder phoenix address.
+      const phoenixPlaceholder = PublicKey.default.toBase58();
+
+      await withRetry(
+        () => deps.meridianClient.createStrikeMarket({
+          ticker,
+          strikePrice: strike,
+          tradingDate,
+          phoenixMarketAddress: phoenixPlaceholder,
+        }),
+        {
+          maxAttempts: 3,
+          initialDelayMs: 2000,
+          maxDelayMs: 10000,
+          operationName: `createStrikeMarket(${ticker}@$${strike})`,
+        },
+      );
+
+      logger.info('processTicker', `Market created: ${ticker} @ $${strike}`, {
+        context: { ticker, strike },
+      });
+    }
 
     created += 1;
   }
@@ -155,6 +206,19 @@ export async function runMorningJob(
       failures.push(msg);
       logger.error('runMorningJob', `Failed to process ${ticker}`, { error: err });
     }
+  }
+
+  if (failures.length > 0) {
+    await deps.alertService.sendAlert(
+      failures.length === tickers.length ? 'critical' : 'warning',
+      'Morning Job Failures',
+      {
+        failedTickers: failures,
+        tickersProcessed,
+        strikesCreated: totalStrikes,
+        totalTickers: tickers.length,
+      },
+    );
   }
 
   const summary: MorningJobSummary = Object.freeze({

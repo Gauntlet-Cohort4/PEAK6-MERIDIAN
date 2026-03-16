@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import type { WalletName } from '@solana/wallet-adapter-base';
+import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 
 type UIState = 'idle' | 'selecting';
@@ -24,8 +25,20 @@ const WALLET_URLS: Record<string, string> = {
  *   Clicking the small logo disconnects current and connects the other wallet.
  */
 export function WalletButtonInner(): React.JSX.Element {
-  const { wallets, wallet, select, disconnect, connected, publicKey } = useWallet();
+  const { wallets, wallet, select, disconnect, connect, connected, publicKey } = useWallet();
   const [uiState, setUiState] = useState<UIState>('idle');
+  const [pendingConnect, setPendingConnect] = useState(false);
+  const pathname = usePathname();
+
+  // After select() sets the wallet, trigger connect()
+  useEffect(() => {
+    if (pendingConnect && wallet && !connected) {
+      setPendingConnect(false);
+      connect().catch(() => {
+        // User rejected or wallet unavailable — stay disconnected
+      });
+    }
+  }, [pendingConnect, wallet, connected, connect]);
 
   // Close picker if we become connected
   useEffect(() => {
@@ -33,6 +46,11 @@ export function WalletButtonInner(): React.JSX.Element {
       setUiState('idle');
     }
   }, [connected]);
+
+  // Close picker on route change
+  useEffect(() => {
+    setUiState('idle');
+  }, [pathname]);
 
   const handleSelectWallet = useCallback(
     (w: (typeof wallets)[number]) => {
@@ -42,7 +60,7 @@ export function WalletButtonInner(): React.JSX.Element {
 
       if (isInstalled) {
         select(w.adapter.name as WalletName);
-        setUiState('idle');
+        setPendingConnect(true);
       } else {
         // Open download page for uninstalled wallet
         const url = WALLET_URLS[w.adapter.name] ?? w.adapter.url;
@@ -72,6 +90,7 @@ export function WalletButtonInner(): React.JSX.Element {
       // Small delay to let disconnect settle before selecting new wallet
       setTimeout(() => {
         select(targetWallet.adapter.name as WalletName);
+        setPendingConnect(true);
       }, 100);
     },
     [disconnect, select],

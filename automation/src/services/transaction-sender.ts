@@ -19,7 +19,7 @@ const logger = new Logger('transaction-sender');
 /** Interface for sending and confirming on-chain transactions. */
 export interface TransactionSender {
   sendAndConfirm(
-    instruction: TransactionInstruction,
+    instruction: TransactionInstruction | readonly TransactionInstruction[],
     signers: readonly Keypair[],
   ): Promise<string>;
 }
@@ -75,7 +75,7 @@ export function createRealTransactionSender(
   const { connection } = deps;
 
   async function sendAndConfirm(
-    instruction: TransactionInstruction,
+    instruction: TransactionInstruction | readonly TransactionInstruction[],
     signers: readonly Keypair[],
   ): Promise<string> {
     const maxRetries = MERIDIAN_CONFIG.MAX_RETRIES_PER_MARKET;
@@ -89,7 +89,11 @@ export function createRealTransactionSender(
           context: { signerCount: signers.length },
         });
 
-        const transaction = new Transaction().add(instruction);
+        const transaction = new Transaction();
+        const ixs = Array.isArray(instruction) ? instruction : [instruction];
+        for (const ix of ixs) {
+          transaction.add(ix);
+        }
 
         const latestBlockhash = await connection.getLatestBlockhash('confirmed');
         transaction.recentBlockhash = latestBlockhash.blockhash;

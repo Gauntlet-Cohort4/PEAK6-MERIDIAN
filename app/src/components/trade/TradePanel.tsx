@@ -14,6 +14,8 @@ import { useTradeActions } from '@/hooks/useTradeActions';
 import { useTradeConfirmation } from '@/hooks/useTradeConfirmation';
 import { isTradeSideAllowed } from '@/lib/position-constraints';
 import { IS_DEMO_MODE } from '@/lib/demo';
+import { useDemoState } from '@/providers/DemoStateProvider';
+import { useToast } from '@/providers/ToastProvider';
 
 interface TradePanelProps {
   readonly market: StrikeMarket;
@@ -35,6 +37,8 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
   const [price, setPrice] = useState(defaultPrice.toFixed(2));
   const { submitOrder, isSubmitting } = useTradeActions();
   const { publicKey: walletPublicKey } = useWallet();
+  const { actions: demoActions } = useDemoState();
+  const { showToast } = useToast();
 
   const parsedSize = useMemo(() => {
     const n = parseFloat(size);
@@ -64,9 +68,30 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
       traderPublicKey: walletPublicKey?.toBase58() ?? '',
     };
 
-    await submitOrder(order);
-    setSize('');
-  }, [canSubmit, market.address, selectedSide, parsedSize, effectivePrice, walletPublicKey, submitOrder]);
+    try {
+      await submitOrder(order);
+
+      // Build a human-readable label for the toast
+      const sideLabel = TRADE_TABS.find((t) => t.value === selectedSide)?.label ?? selectedSide;
+      showToast(`${sideLabel}: ${parsedSize} contracts on ${market.ticker}`);
+
+      // In demo mode, update the balance
+      if (IS_DEMO_MODE) {
+        if (selectedSide === TradeSide.BUY_YES) {
+          // Minting a pair costs $1 per contract
+          demoActions.deductBalance(parsedSize);
+        } else if (selectedSide === TradeSide.BUY_NO) {
+          // Buying NO costs contracts * price
+          demoActions.deductBalance(parsedSize * effectivePrice);
+        }
+      }
+
+      setSize('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      showToast(`Trade failed: ${message}`, 'error');
+    }
+  }, [canSubmit, market.address, market.ticker, selectedSide, parsedSize, effectivePrice, walletPublicKey, submitOrder, showToast, demoActions]);
 
   const confirmation = useTradeConfirmation(handleSubmit);
 

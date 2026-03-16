@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { formatUSD } from '@/lib/format';
 import { IS_DEMO_MODE } from '@/lib/demo';
+import { useToast } from '@/providers/ToastProvider';
 
 // ---------------------------------------------------------------------------
 // Market-level controls (shown on trade page or market card)
@@ -21,6 +22,7 @@ interface DemoMarketControlsProps {
 export function DemoMarketControls({ market }: DemoMarketControlsProps) {
   // All hooks MUST be called before any early returns (Rules of Hooks)
   const { actions } = useDemoState();
+  const { showToast } = useToast();
   const [settlementPrice, setSettlementPrice] = useState('');
 
   const parsedPrice = useMemo(() => parseFloat(settlementPrice), [settlementPrice]);
@@ -32,7 +34,8 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
     const price = Math.max(parsedPrice, market.strikePrice);
     actions.settleMarket(market.address, price);
     setSettlementPrice('');
-  }, [actions, market.address, market.strikePrice, parsedPrice, isValidPrice]);
+    showToast(`Settled ${market.ticker} at ${formatUSD(price)} - YES wins`);
+  }, [actions, market.address, market.strikePrice, market.ticker, parsedPrice, isValidPrice, showToast]);
 
   const handleSettleNo = useCallback(() => {
     if (!isValidPrice) return;
@@ -40,15 +43,19 @@ export function DemoMarketControls({ market }: DemoMarketControlsProps) {
     const price = Math.min(parsedPrice, market.strikePrice - 0.01);
     actions.settleMarket(market.address, price);
     setSettlementPrice('');
-  }, [actions, market.address, market.strikePrice, parsedPrice, isValidPrice]);
+    showToast(`Settled ${market.ticker} at ${formatUSD(price)} - NO wins`);
+  }, [actions, market.address, market.strikePrice, market.ticker, parsedPrice, isValidPrice, showToast]);
 
   const handleReopen = useCallback(() => {
     actions.reopenMarket(market.address);
-  }, [actions, market.address]);
+    showToast(`Reopened ${market.ticker} market`, 'info');
+  }, [actions, market.address, market.ticker, showToast]);
 
   const handleMintPair = useCallback(() => {
     actions.addPosition(market.address, 10, 10);
-  }, [actions, market.address]);
+    actions.deductBalance(10); // 10 pairs * $1 each
+    showToast(`Minted 10 pairs for ${market.ticker}`);
+  }, [actions, market.address, market.ticker, showToast]);
 
   if (!IS_DEMO_MODE) return null;
 

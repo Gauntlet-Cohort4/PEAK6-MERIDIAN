@@ -41,7 +41,7 @@ export function Header() {
         <div className="ml-auto flex items-center gap-4">
           {IS_DEMO_MODE && (
             <>
-              <div className="bg-yellow-500/10 text-yellow-600 text-xs font-medium px-3 py-1 rounded-full border border-yellow-500/30">
+              <div className="bg-yellow-500/10 text-yellow-800 dark:text-yellow-200 text-xs font-medium px-3 py-1 rounded-full border border-yellow-500/30">
                 Demo Mode
               </div>
               <DemoToolbar />

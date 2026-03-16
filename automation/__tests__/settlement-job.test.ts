@@ -38,9 +38,13 @@ function createMockDeps(overrides?: Partial<SettlementJobDeps>): SettlementJobDe
 
   const meridianClient: MeridianClient = {
     createStrikeMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
+    setPhoenixMarket: vi.fn().mockResolvedValue('set-phoenix-sig'),
     settleMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
     adminSettle: vi.fn().mockResolvedValue('mock-tx-sig'),
     getActiveMarkets: vi.fn().mockResolvedValue([]),
+    buildCreateStrikeMarketIx: vi.fn().mockResolvedValue({ instruction: {}, strikeMarketAddress: 'mock-addr', yesMintAddress: 'mock-yes-addr' }),
+    buildSetPhoenixMarketIx: vi.fn().mockResolvedValue({}),
+    sendInstructions: vi.fn().mockResolvedValue('mock-atomic-sig'),
   };
 
   const alertService: AlertService = {
@@ -194,9 +198,13 @@ describe('getActiveMarkets via client', () => {
     const deps = createMockDeps({
       meridianClient: {
         createStrikeMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
+        setPhoenixMarket: vi.fn().mockResolvedValue('set-phoenix-sig'),
         settleMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
         adminSettle: vi.fn().mockResolvedValue('mock-tx-sig'),
         getActiveMarkets,
+        buildCreateStrikeMarketIx: vi.fn().mockResolvedValue({ instruction: {}, strikeMarketAddress: 'mock-addr', yesMintAddress: 'mock-yes-addr' }),
+        buildSetPhoenixMarketIx: vi.fn().mockResolvedValue({}),
+        sendInstructions: vi.fn().mockResolvedValue('mock-atomic-sig'),
       },
     });
 
@@ -212,9 +220,13 @@ describe('getActiveMarkets via client', () => {
     const deps = createMockDeps({
       meridianClient: {
         createStrikeMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
+        setPhoenixMarket: vi.fn().mockResolvedValue('set-phoenix-sig'),
         settleMarket: vi.fn().mockResolvedValue('mock-tx-sig'),
         adminSettle: vi.fn().mockResolvedValue('mock-tx-sig'),
         getActiveMarkets,
+        buildCreateStrikeMarketIx: vi.fn().mockResolvedValue({ instruction: {}, strikeMarketAddress: 'mock-addr', yesMintAddress: 'mock-yes-addr' }),
+        buildSetPhoenixMarketIx: vi.fn().mockResolvedValue({}),
+        sendInstructions: vi.fn().mockResolvedValue('mock-atomic-sig'),
       },
     });
 

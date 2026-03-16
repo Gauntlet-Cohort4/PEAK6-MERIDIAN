@@ -9,7 +9,7 @@ pub mod state;
 
 use instructions::*;
 
-declare_id!("AiG9ZAw6625w5zUQRsfmWwqXRmYSZAJe9MRfjcJoEK9h");
+declare_id!("DkF63Re3EouN699gE3NvEnE1t7PuGC8UrYQEsbRAkEvE");
 
 #[program]
 pub mod meridian {
@@ -92,6 +92,14 @@ pub mod meridian {
     /// Composite: buy Yes on Phoenix + redeem Yes+No pair for USDC.
     pub fn sell_no(ctx: Context<SellNo>, amount: u64) -> Result<()> {
         instructions::sell_no::handler(ctx, amount)
+    }
+
+    /// Updates the Phoenix market address on a strike market (admin only).
+    pub fn set_phoenix_market(
+        ctx: Context<SetPhoenixMarket>,
+        phoenix_market: Pubkey,
+    ) -> Result<()> {
+        instructions::set_phoenix_market::handler(ctx, phoenix_market)
     }
 
     /// Pauses the program (blocks minting and market creation).

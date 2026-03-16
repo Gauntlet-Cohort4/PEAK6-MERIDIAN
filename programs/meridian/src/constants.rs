@@ -4,8 +4,12 @@ pub const STALENESS_THRESHOLD: i64 = 300;
 /// Oracle confidence interval threshold in basis points (1%).
 pub const CONFIDENCE_THRESHOLD_BPS: u64 = 100;
 
-/// Delay in seconds before admin can force-settle (1 hour after 4:05 PM ET).
+/// Delay in seconds before admin can force-settle.
+/// Production: 1 hour after market close. Demo: 5 seconds.
+#[cfg(not(feature = "demo-mode"))]
 pub const ADMIN_SETTLE_DELAY: i64 = 3600;
+#[cfg(feature = "demo-mode")]
+pub const ADMIN_SETTLE_DELAY: i64 = 5;
 
 /// Cost per pair in USDC base units (1 USDC = 1_000_000 lamports).
 pub const PAIR_COST_LAMPORTS: u64 = 1_000_000;
@@ -40,7 +44,9 @@ pub const VAULT_SEED: &[u8] = b"vault";
 /// Phoenix Legacy program ID.
 pub const PHOENIX_PROGRAM_ID: &str = "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY";
 
-/// Market close time: 4:05 PM ET expressed as seconds from midnight UTC.
-/// 4:05 PM ET = 21:05 UTC (during EST; 20:05 during EDT).
-/// We use the EST variant (worst-case later time).
+/// Market close time expressed as seconds from midnight UTC.
+/// Production: 4:05 PM ET = 21:05 UTC (EST variant). Demo: 5 seconds.
+#[cfg(not(feature = "demo-mode"))]
 pub const MARKET_CLOSE_SECONDS_UTC: i64 = 75_900; // 21 * 3600 + 5 * 60
+#[cfg(feature = "demo-mode")]
+pub const MARKET_CLOSE_SECONDS_UTC: i64 = 5;
