@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useSettlementTimer, type TimerStatus } from '@/hooks/useSettlementTimer';
 import { Badge } from '@/components/ui/badge';
 import { Clock } from 'lucide-react';
@@ -23,6 +24,9 @@ const statusBadges: Record<TimerStatus, string> = {
 
 export function SettlementTimer({ className }: SettlementTimerProps) {
   const { timeString, status } = useSettlementTimer();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   return (
     <div
@@ -36,7 +40,9 @@ export function SettlementTimer({ className }: SettlementTimerProps) {
       >
         {statusBadges[status]}
       </Badge>
-      <span className={cn('font-mono', statusColors[status])}>{timeString}</span>
+      <span className={cn('font-mono', statusColors[status])}>
+        {mounted ? timeString : '\u00A0'}
+      </span>
     </div>
   );
 }

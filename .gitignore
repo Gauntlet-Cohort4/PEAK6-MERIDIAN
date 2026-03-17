@@ -40,6 +40,13 @@ coverage/
 # Logs
 *.log
 npm-debug.log*
+logs/
+
+# Deploy runtime
+.pids/
+
+# Test mint record
+scripts/.test-usdc-mint.json
 
 # Chrome DevTools screenshots
 screenshots/

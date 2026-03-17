@@ -129,26 +129,17 @@ export function WalletButtonInner(): React.JSX.Element {
                 key={w.adapter.name}
                 onClick={() => handleSelectWallet(w)}
                 className="flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[#1a2035] text-[#e2e8f0]"
-                title={
-                  isInstalled
-                    ? `Connect ${w.adapter.name}`
-                    : `Install ${w.adapter.name}`
-                }
+                title={`Connect ${w.adapter.name}`}
               >
                 <Image
                   src={w.adapter.icon}
                   alt={w.adapter.name}
                   width={20}
                   height={20}
-                  className={`rounded-sm ${isInstalled ? '' : 'opacity-40'}`}
+                  className="rounded-sm"
                   unoptimized
                 />
                 <span className="hidden sm:inline">{w.adapter.name}</span>
-                {!isInstalled && (
-                  <span className="text-[10px] text-[#64748b]">
-                    Install
-                  </span>
-                )}
               </button>
             );
           })}
