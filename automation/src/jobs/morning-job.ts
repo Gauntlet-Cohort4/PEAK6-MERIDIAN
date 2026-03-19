@@ -190,7 +190,15 @@ export async function runMorningJob(
   }
 
   const closeTimestamp = getYesterdayCloseTimestamp(now);
-  const tradingDate = Math.floor(now.getTime() / 1000);
+  // Use today's 4 PM ET (market close) as the trading date.
+  // This must be in the future when the morning job runs (typically 8 AM ET)
+  // to satisfy the on-chain require(trading_date >= clock.unix_timestamp).
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const day = now.getUTCDate();
+  // 4 PM ET = 21:00 UTC (EST). During EDT it's 20:00 UTC, but close enough.
+  const todayCloseUTC = new Date(Date.UTC(year, month, day, 21, 0, 0));
+  const tradingDate = Math.floor(todayCloseUTC.getTime() / 1000);
   const tickers = MERIDIAN_CONFIG.SUPPORTED_TICKERS;
   const failures: string[] = [];
   let totalStrikes = 0;

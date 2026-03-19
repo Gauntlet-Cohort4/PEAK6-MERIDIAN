@@ -165,7 +165,7 @@ export const PYTH_FEED_IDS: Readonly<Record<SupportedTicker, string>> = {
 
 /** Devnet USDC mint (SPL Token faucet). */
 export const DEVNET_USDC_MINT = new PublicKey(
-  '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+  'DZSY3GVoKSzMMh1vePZdgHsMavPyhB9dEGDjVtqHSYro',
 );
 
 /** Mainnet USDC mint (Circle-issued). */

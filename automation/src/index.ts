@@ -31,7 +31,7 @@ const logger = new Logger('automation');
 
 /** USDC mint addresses by network. */
 const USDC_MINTS = {
-  devnet: new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'),
+  devnet: new PublicKey('DZSY3GVoKSzMMh1vePZdgHsMavPyhB9dEGDjVtqHSYro'),
   mainnet: new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
 } as const;
 

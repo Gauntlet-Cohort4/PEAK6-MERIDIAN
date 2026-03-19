@@ -49,7 +49,7 @@ export const SYSTEM_PROGRAM_ID = new PublicKey(
 export const USDC_MINT = new PublicKey(
   typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_USDC_MINT']
     ? process.env['NEXT_PUBLIC_USDC_MINT']
-    : '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+    : 'DZSY3GVoKSzMMh1vePZdgHsMavPyhB9dEGDjVtqHSYro',
 );
 
 // ── Program singleton ──────────────────────────────────────────────────

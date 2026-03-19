@@ -360,7 +360,9 @@ export function createRealMeridianClient(deps: RealMeridianClientDeps): Meridian
     });
 
     try {
-      const strikePriceBN = new BN(params.strikePrice);
+      // On-chain stores strike prices in cents (23000 = $230.00).
+      // The strike calculator returns whole dollars, so multiply by 100.
+      const strikePriceBN = new BN(params.strikePrice * 100);
       const tradingDateBN = new BN(params.tradingDate);
 
       const [configPda] = deriveConfigPda(programPubkey);
@@ -639,7 +641,8 @@ export function createRealMeridianClient(deps: RealMeridianClientDeps): Meridian
   async function buildCreateStrikeMarketIx(
     params: Omit<CreateStrikeMarketParams, 'phoenixMarketAddress'>,
   ): Promise<CreateStrikeMarketIxResult> {
-    const strikePriceBN = new BN(params.strikePrice);
+    // On-chain stores strike prices in cents (23000 = $230.00).
+    const strikePriceBN = new BN(params.strikePrice * 100);
     const tradingDateBN = new BN(params.tradingDate);
 
     const [configPda] = deriveConfigPda(programPubkey);

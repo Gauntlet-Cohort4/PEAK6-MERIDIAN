@@ -148,40 +148,51 @@ export function createPythHermesClient(
       timestamp,
     });
 
-    return withRetry(async () => {
-      const url = `${benchmarksBase}/v1/updates/price/${timestamp}?ids[]=${feedId}`;
-      const response = await fetchFn(url);
+    // Try Benchmarks API first, fall back to Hermes latest if unavailable.
+    // Benchmarks uses "ids" param (no brackets), unlike Hermes "ids[]".
+    try {
+      return await withRetry(async () => {
+        const url = `${benchmarksBase}/v1/updates/price/${timestamp}?ids=${feedId}`;
+        const response = await fetchFn(url);
 
-      if (!response.ok) {
-        throw new MeridianError(
-          MeridianErrorCode.PYTH_HERMES_ERROR,
-          `Benchmarks API returned ${response.status}: ${response.statusText}`,
-          undefined,
-          { feedId, timestamp, url },
-        );
-      }
+        if (!response.ok) {
+          throw new MeridianError(
+            MeridianErrorCode.PYTH_HERMES_ERROR,
+            `Benchmarks API returned ${response.status}: ${response.statusText}`,
+            undefined,
+            { feedId, timestamp, url },
+          );
+        }
 
-      const body = await response.json() as { parsed: readonly PythParsedEntry[] };
-      const entry = body.parsed[0];
+        const body = await response.json() as { parsed: readonly PythParsedEntry[] };
+        const entry = body.parsed[0];
 
-      if (!entry) {
-        throw new MeridianError(
-          MeridianErrorCode.PYTH_HERMES_ERROR,
-          `No historical price data for feed ${feedId} at ${timestamp}`,
-          undefined,
-          { feedId, timestamp },
-        );
-      }
+        if (!entry) {
+          throw new MeridianError(
+            MeridianErrorCode.PYTH_HERMES_ERROR,
+            `No historical price data for feed ${feedId} at ${timestamp}`,
+            undefined,
+            { feedId, timestamp },
+          );
+        }
 
-      const priceData = parsePriceEntry(entry);
-      debugLog('ORACLE_READS', 'pyth-hermes', 'getHistoricalPrice', 'Historical price fetched', {
-        feedId,
-        timestamp,
-        price: priceData.price,
-      });
+        const priceData = parsePriceEntry(entry);
+        debugLog('ORACLE_READS', 'pyth-hermes', 'getHistoricalPrice', 'Historical price fetched', {
+          feedId,
+          timestamp,
+          price: priceData.price,
+        });
 
-      return priceData;
-    }, 'getHistoricalPrice');
+        return priceData;
+      }, 'getHistoricalPrice');
+    } catch {
+      // Benchmarks API may not have equity historical data.
+      // Fall back to Hermes latest price (acceptable for strike calculation
+      // since the morning job runs before market open).
+      logger.warn('getHistoricalPrice',
+        `Benchmarks unavailable for feed ${feedId}, falling back to Hermes latest price`);
+      return getLatestPrice(feedId);
+    }
   }
 
   async function health(): Promise<HealthStatus> {
