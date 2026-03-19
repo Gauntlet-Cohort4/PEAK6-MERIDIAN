@@ -398,17 +398,34 @@ step_env() {
 
   info "Creating .env from .env.example..."
 
-  # Read the program ID if available
-  local program_id="DkF63Re3EouN699gE3NvEnE1t7PuGC8UrYQEsbRAkEvE"
+  # Read the program ID from keypair (no hardcoded fallback — each deploy is unique)
+  local program_id="<YOUR_PROGRAM_ID>"
   if [ -f "$PROGRAM_KEYPAIR_PATH" ]; then
     program_id=$(solana-keygen pubkey "$PROGRAM_KEYPAIR_PATH" 2>/dev/null || echo "$program_id")
+  else
+    warn "No program keypair found. Run --keys-only first to generate one."
+    warn ".env will have a placeholder PROGRAM_ID — update after deploy."
   fi
 
-  # Determine USDC mint for the network
-  local usdc_mint
+  # Determine USDC mint for the network.
+  # On devnet, each team needs their own mint (they must control the mint authority
+  # to fund test wallets). Run: npx tsx scripts/mint-test-usdc.ts
+  # The script creates a mint and saves its address to .test-usdc-mint.json.
+  local usdc_mint=""
   case "$SOLANA_NETWORK" in
     mainnet|mainnet-beta) usdc_mint="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" ;;
-    *)                    usdc_mint="DZSY3GVoKSzMMh1vePZdgHsMavPyhB9dEGDjVtqHSYro" ;;
+    *)
+      # Check if a test USDC mint was already created
+      if [ -f "$PROJECT_DIR/.test-usdc-mint.json" ]; then
+        usdc_mint=$(grep -oE '[A-Za-z0-9]{32,44}' "$PROJECT_DIR/.test-usdc-mint.json" | head -1)
+        info "Found existing test USDC mint: $usdc_mint"
+      else
+        warn "No test USDC mint found. After setup, create one with:"
+        echo "    npx tsx scripts/mint-test-usdc.ts"
+        echo "  Then re-run: ./scripts/setup.sh --env-only"
+        usdc_mint="<RUN_mint-test-usdc.ts_FIRST>"
+      fi
+      ;;
   esac
 
   # Copy .env.example and substitute generated values
