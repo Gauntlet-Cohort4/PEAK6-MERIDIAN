@@ -57,9 +57,10 @@ function StockGroup({
   readonly defaultExpanded: boolean;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const activeCount = group.markets.filter(
+  const openCount = group.markets.filter(
     (m) => m.status === MarketStatus.OPEN,
   ).length;
+  const totalCount = group.markets.length;
 
   return (
     <div className="space-y-2" data-testid={`stock-group-${group.ticker}`}>
@@ -75,7 +76,7 @@ function StockGroup({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-[#64748b]">
-            {activeCount} active
+            {openCount > 0 ? `${openCount} active` : `${totalCount} contracts`}
           </span>
           {expanded ? (
             <ChevronDown className="h-4 w-4 text-[#64748b]" />

@@ -13,8 +13,11 @@ export default function MarketsPage() {
   const [showClosed, setShowClosed] = useState(false);
 
   const markets = useMemo(() => {
-    if (showClosed) return allMarkets;
-    return allMarkets.filter(
+    // Filter out old markets with broken strike prices (stored in dollars instead of cents).
+    // Any strike < $5.00 is clearly a data error from pre-fix markets.
+    const valid = allMarkets.filter((m) => m.strikePrice >= 5);
+    if (showClosed) return valid;
+    return valid.filter(
       (m) => m.status === MarketStatus.OPEN || m.status === MarketStatus.PENDING,
     );
   }, [allMarkets, showClosed]);
