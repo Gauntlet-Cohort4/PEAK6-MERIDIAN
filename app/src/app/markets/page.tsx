@@ -14,8 +14,8 @@ export default function MarketsPage() {
 
   const markets = useMemo(() => {
     // Filter out old markets with broken strike prices (stored in dollars instead of cents).
-    // Any strike < $5.00 is clearly a data error from pre-fix markets.
-    const valid = allMarkets.filter((m) => m.strikePrice >= 5);
+    // Any strike < $100 is a data error from pre-fix markets (lowest real strike is ~$160).
+    const valid = allMarkets.filter((m) => m.strikePrice >= 100);
     if (showClosed) return valid;
     return valid.filter(
       (m) => m.status === MarketStatus.OPEN || m.status === MarketStatus.PENDING,
