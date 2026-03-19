@@ -3,12 +3,12 @@
 import { useState, useMemo } from 'react';
 import { type StrikeMarket, type OrderBookState, MarketStatus } from '@meridian/shared/types';
 import type { SupportedTicker } from '@meridian/shared/constants';
-import { usePythPrice } from '@/hooks/usePythPrice';
 import { usePriceHistory } from '@/hooks/usePriceHistory';
 import { usePositions } from '@/hooks/usePositions';
-import { MarketCard } from './MarketCard';
 import { TickerFilter } from './TickerFilter';
+import { StrikeTable } from './StrikeTable';
 import { PriceDisplay } from '@/components/shared/PriceDisplay';
+import { SparklineChart } from '@/components/charts/SparklineChart';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface MarketListProps {
@@ -22,36 +22,26 @@ interface TickerGroup {
 }
 
 /**
- * Wrapper that calls usePythPrice for a single market card,
- * keeping MarketCard pure and testable.
+ * Sparkline chart wrapper that fetches price history for a ticker.
+ * Rendered once per expanded group (not per strike).
  */
-function LiveMarketCard({
-  market,
-  orderBook,
-  getPosition,
-}: {
-  readonly market: StrikeMarket;
-  readonly orderBook: OrderBookState | null;
-  readonly getPosition: (marketAddress: string) => import('@meridian/shared/types').Position | null;
-}) {
-  const { priceData } = usePythPrice(market.ticker);
-  const { prices: priceHistory } = usePriceHistory(market.ticker as SupportedTicker);
-  const position = getPosition(market.address);
+function TickerSparkline({ ticker }: { readonly ticker: SupportedTicker }) {
+  const { prices } = usePriceHistory(ticker);
+
+  if (!prices || prices.length < 2) {
+    return null;
+  }
+
   return (
-    <MarketCard
-      market={market}
-      orderBook={orderBook}
-      currentStockPrice={priceData?.price ?? null}
-      priceHistory={priceHistory}
-      userYesBalance={position?.yesTokenBalance}
-      userNoBalance={position?.noTokenBalance}
-    />
+    <div className="px-3 pt-2 pb-1">
+      <SparklineChart data={prices} height={48} showLastDot />
+    </div>
   );
 }
 
 /**
  * A stock group card that shows ticker, live price, active contract count,
- * and expands to show individual strike contracts.
+ * and expands to show a single sparkline + compact strike table.
  */
 function StockGroup({
   group,
@@ -71,11 +61,13 @@ function StockGroup({
   const totalCount = group.markets.length;
 
   return (
-    <div className="space-y-2" data-testid={`stock-group-${group.ticker}`}>
+    <div className="space-y-0" data-testid={`stock-group-${group.ticker}`}>
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
-        className="w-full flex items-center justify-between rounded-md border border-[#1e2a3a] bg-[#111827] px-4 py-3 hover:bg-[#1a2035] transition-colors cursor-pointer"
+        className={`w-full flex items-center justify-between border border-[#1e2a3a] bg-[#111827] px-4 py-3 hover:bg-[#1a2035] transition-colors cursor-pointer ${
+          expanded ? 'rounded-t-md border-b-0' : 'rounded-md'
+        }`}
         data-testid={`stock-group-header-${group.ticker}`}
       >
         <div className="flex items-center gap-3">
@@ -84,7 +76,10 @@ function StockGroup({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-[#64748b]">
-            {openCount > 0 ? `${openCount} active` : `${totalCount} contracts`}
+            {totalCount} contract{totalCount !== 1 ? 's' : ''}
+            {openCount > 0 && (
+              <span className="text-[#00d26a] ml-1">{openCount} active</span>
+            )}
           </span>
           {expanded ? (
             <ChevronDown className="h-4 w-4 text-[#64748b]" />
@@ -95,15 +90,13 @@ function StockGroup({
       </button>
 
       {expanded && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pl-1">
-          {group.markets.map((market) => (
-            <LiveMarketCard
-              key={market.address}
-              market={market}
-              orderBook={orderBooks[market.address] ?? null}
-              getPosition={getPosition}
-            />
-          ))}
+        <div className="rounded-b-md border border-[#1e2a3a] border-t-0 bg-[#111827]">
+          <TickerSparkline ticker={group.ticker} />
+          <StrikeTable
+            markets={group.markets}
+            orderBooks={orderBooks}
+            getPosition={getPosition}
+          />
         </div>
       )}
     </div>

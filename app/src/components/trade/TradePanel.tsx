@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { TradeSide } from '@meridian/shared/types';
 import type { StrikeMarket, Position, TradeOrder } from '@meridian/shared/types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -38,6 +39,7 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
   const [price, setPrice] = useState(defaultPrice.toFixed(2));
   const { submitOrder, isSubmitting } = useTradeActions();
   const { publicKey: walletPublicKey } = useWallet();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
   const { actions: demoActions } = useDemoState();
   const { showToast } = useToast();
 
@@ -51,6 +53,7 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
     return isNaN(n) || n <= 0 || n >= 1 ? 0 : n;
   }, [price]);
 
+  const walletConnected = IS_DEMO_MODE || !!walletPublicKey;
   const isAllowed = isTradeSideAllowed(selectedSide, position);
   const isMarketOrder = orderType === 'market';
   const priceValid = isMarketOrder || parsedPrice > 0;
@@ -246,15 +249,19 @@ export function TradePanel({ market, position, defaultPrice = 0.5 }: TradePanelP
               <Button
                 className={cn(
                   'w-full font-semibold text-sm',
-                  (tab.value === TradeSide.BUY_YES || tab.value === TradeSide.SELL_NO)
-                    ? 'bg-[#00d26a] hover:bg-[#00d26a]/90 text-white shadow-[0_0_12px_rgba(0,210,106,0.2)]'
-                    : 'bg-[#ff3b69] hover:bg-[#ff3b69]/90 text-white shadow-[0_0_12px_rgba(255,59,105,0.2)]',
+                  !walletConnected
+                    ? 'bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white'
+                    : (tab.value === TradeSide.BUY_YES || tab.value === TradeSide.SELL_NO)
+                      ? 'bg-[#00d26a] hover:bg-[#00d26a]/90 text-white shadow-[0_0_12px_rgba(0,210,106,0.2)]'
+                      : 'bg-[#ff3b69] hover:bg-[#ff3b69]/90 text-white shadow-[0_0_12px_rgba(255,59,105,0.2)]',
                 )}
-                disabled={!canSubmit}
-                onClick={handleTradeClick}
+                disabled={walletConnected && !canSubmit}
+                onClick={walletConnected ? handleTradeClick : () => setWalletModalVisible(true)}
                 data-testid="submit-trade-button"
               >
-                {isSubmitting ? 'Submitting...' : tab.label}
+                {!walletConnected
+                  ? 'Connect Wallet to Trade'
+                  : isSubmitting ? 'Submitting...' : tab.label}
               </Button>
             </div>
           </TabsContent>
