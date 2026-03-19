@@ -72,6 +72,8 @@ function mapOnChainToStrikeMarket(
   const settlementPriceCents: BN = account.settlementPrice;
   const settledAtBN: BN = account.settledAt;
   const ticker: string = account.ticker;
+  const totalPairsMintedBN: BN | undefined = account.totalPairsMinted;
+  const totalPairsRedeemedBN: BN | undefined = account.totalPairsRedeemed;
 
   const tradingDateMs = tradingDate.toNumber() * 1000;
   // Expiry is NYSE close: trading_date + 16 hours
@@ -87,6 +89,8 @@ function mapOnChainToStrikeMarket(
     noTokenMint: (account.noMint as PublicKey).toBase58(),
     oracleFeedId: feedIdForTicker(ticker),
     settlementPrice: settled ? centsToUsd(settlementPriceCents) : null,
+    totalPairsMinted: totalPairsMintedBN ? totalPairsMintedBN.toNumber() : 0,
+    totalPairsRedeemed: totalPairsRedeemedBN ? totalPairsRedeemedBN.toNumber() : 0,
     createdAt: tradingDateMs,
     settledAt: settled && settledAtBN.toNumber() > 0
       ? settledAtBN.toNumber() * 1000

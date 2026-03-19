@@ -40,6 +40,8 @@ export interface StrikeMarket {
   readonly noTokenMint: string;
   readonly oracleFeedId: string;
   readonly settlementPrice: number | null;
+  readonly totalPairsMinted: number;
+  readonly totalPairsRedeemed: number;
   readonly createdAt: number;
   readonly settledAt: number | null;
 }

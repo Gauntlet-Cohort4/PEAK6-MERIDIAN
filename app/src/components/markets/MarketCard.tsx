@@ -14,6 +14,8 @@ interface MarketCardProps {
   readonly orderBook: OrderBookState | null;
   readonly currentStockPrice?: number | null;
   readonly priceHistory?: readonly { time: number; value: number }[];
+  readonly userYesBalance?: number;
+  readonly userNoBalance?: number;
 }
 
 function getBestPrices(book: OrderBookState | null): {
@@ -28,7 +30,7 @@ function getBestPrices(book: OrderBookState | null): {
   return { bestBid, bestAsk };
 }
 
-export const MarketCard = memo(function MarketCard({ market, orderBook, currentStockPrice, priceHistory }: MarketCardProps) {
+export const MarketCard = memo(function MarketCard({ market, orderBook, currentStockPrice, priceHistory, userYesBalance, userNoBalance }: MarketCardProps) {
   const { bestBid, bestAsk } = getBestPrices(orderBook);
   const probability = calcImpliedProbability(bestBid, bestAsk);
   const oneSided = isOneSidedBook(bestBid, bestAsk);
@@ -98,6 +100,27 @@ export const MarketCard = memo(function MarketCard({ market, orderBook, currentS
             </span>
           </div>
         )}
+
+        {/* Volume & user position */}
+        <div className="flex items-center justify-between mt-2 text-[11px]">
+          <span className="text-[#64748b] font-mono">
+            {market.totalPairsMinted} minted
+          </span>
+          {userYesBalance != null && userNoBalance != null && (userYesBalance > 0 || userNoBalance > 0) && (
+            <span className="font-mono">
+              <span className="text-[#64748b]">You: </span>
+              {userYesBalance > 0 && (
+                <span className="text-[#00d26a]">{userYesBalance} YES</span>
+              )}
+              {userYesBalance > 0 && userNoBalance > 0 && (
+                <span className="text-[#64748b]"> / </span>
+              )}
+              {userNoBalance > 0 && (
+                <span className="text-[#ff3b69]">{userNoBalance} NO</span>
+              )}
+            </span>
+          )}
+        </div>
 
         {/* Sparkline price history */}
         {priceHistory && priceHistory.length > 0 && (

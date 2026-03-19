@@ -5,6 +5,7 @@ import { type StrikeMarket, type OrderBookState, MarketStatus } from '@meridian/
 import type { SupportedTicker } from '@meridian/shared/constants';
 import { usePythPrice } from '@/hooks/usePythPrice';
 import { usePriceHistory } from '@/hooks/usePriceHistory';
+import { usePositions } from '@/hooks/usePositions';
 import { MarketCard } from './MarketCard';
 import { TickerFilter } from './TickerFilter';
 import { PriceDisplay } from '@/components/shared/PriceDisplay';
@@ -27,18 +28,23 @@ interface TickerGroup {
 function LiveMarketCard({
   market,
   orderBook,
+  getPosition,
 }: {
   readonly market: StrikeMarket;
   readonly orderBook: OrderBookState | null;
+  readonly getPosition: (marketAddress: string) => import('@meridian/shared/types').Position | null;
 }) {
   const { priceData } = usePythPrice(market.ticker);
   const { prices: priceHistory } = usePriceHistory(market.ticker as SupportedTicker);
+  const position = getPosition(market.address);
   return (
     <MarketCard
       market={market}
       orderBook={orderBook}
       currentStockPrice={priceData?.price ?? null}
       priceHistory={priceHistory}
+      userYesBalance={position?.yesTokenBalance}
+      userNoBalance={position?.noTokenBalance}
     />
   );
 }
@@ -51,10 +57,12 @@ function StockGroup({
   group,
   orderBooks,
   defaultExpanded,
+  getPosition,
 }: {
   readonly group: TickerGroup;
   readonly orderBooks: Record<string, OrderBookState>;
   readonly defaultExpanded: boolean;
+  readonly getPosition: (marketAddress: string) => import('@meridian/shared/types').Position | null;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const openCount = group.markets.filter(
@@ -93,6 +101,7 @@ function StockGroup({
               key={market.address}
               market={market}
               orderBook={orderBooks[market.address] ?? null}
+              getPosition={getPosition}
             />
           ))}
         </div>
@@ -102,6 +111,7 @@ function StockGroup({
 }
 
 export function MarketList({ markets, orderBooks }: MarketListProps) {
+  const { getPosition } = usePositions();
   const [selectedTicker, setSelectedTicker] = useState<SupportedTicker | null>(
     null,
   );
@@ -155,6 +165,7 @@ export function MarketList({ markets, orderBooks }: MarketListProps) {
               group={group}
               orderBooks={orderBooks}
               defaultExpanded={isSingleTicker}
+              getPosition={getPosition}
             />
           ))}
         </div>

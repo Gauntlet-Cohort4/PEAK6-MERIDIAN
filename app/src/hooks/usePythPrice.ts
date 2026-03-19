@@ -6,6 +6,7 @@ import type { SupportedTicker } from '@meridian/shared/constants';
 import { PYTH_FEED_IDS } from '@meridian/shared/constants';
 import { MOCK_PRICES } from '@/lib/mock-data';
 import { IS_DEMO_MODE } from '@/lib/demo';
+import { recordPrice } from '@/lib/price-history-buffer';
 
 /** Pyth Hermes API base URL. */
 const HERMES_BASE_URL = 'https://hermes.pyth.network';
@@ -97,20 +98,23 @@ export function usePythPrice(ticker: SupportedTicker | null): UsePythPriceResult
         return;
       }
 
-      setPriceData({ ...mock, timestamp: Date.now() });
+      const initialData = { ...mock, timestamp: Date.now() };
+      setPriceData(initialData);
+      recordPrice(ticker, initialData.price, initialData.timestamp);
       setIsLoading(false);
 
       const interval = setInterval(() => {
         const jitter = (Math.random() - 0.5) * 0.5;
-        setPriceData((prev) =>
-          prev
-            ? {
-                ...prev,
-                price: parseFloat((prev.price + jitter).toFixed(2)),
-                timestamp: Date.now(),
-              }
-            : null,
-        );
+        setPriceData((prev) => {
+          if (!prev) return null;
+          const updated = {
+            ...prev,
+            price: parseFloat((prev.price + jitter).toFixed(2)),
+            timestamp: Date.now(),
+          };
+          recordPrice(ticker, updated.price, updated.timestamp);
+          return updated;
+        });
       }, 3000);
 
       return () => clearInterval(interval);
@@ -132,6 +136,7 @@ export function usePythPrice(ticker: SupportedTicker | null): UsePythPriceResult
         if (!cancelled) {
           setPriceData(data);
           setError(null);
+          recordPrice(ticker!, data.price, data.timestamp);
         }
       } catch (err) {
         if (!cancelled) {
