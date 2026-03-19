@@ -63,6 +63,11 @@ function StrikeRow({ row }: { readonly row: StrikeRowData }) {
         {formatUSD(market.strikePrice)}
       </div>
 
+      {/* Date */}
+      <div className="px-3 py-2 text-xs text-[#64748b] group-hover:bg-[#1a2035] transition-colors border-b border-[#1e2a3a] hidden sm:block">
+        {new Date(market.expiryTimestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+      </div>
+
       {/* Status */}
       <div className="px-3 py-2 group-hover:bg-[#1a2035] transition-colors border-b border-[#1e2a3a]">
         <Badge
@@ -165,7 +170,7 @@ function StrikeTableInner({ markets, orderBooks, getPosition }: StrikeTableProps
       <div
         className="grid min-w-[600px]"
         style={{
-          gridTemplateColumns: '1fr auto 80px 80px 80px auto auto',
+          gridTemplateColumns: '1fr auto auto 80px 80px 80px auto auto',
         }}
         role="table"
         aria-label="Strike contracts"
@@ -173,6 +178,9 @@ function StrikeTableInner({ markets, orderBooks, getPosition }: StrikeTableProps
         {/* Header */}
         <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-[#64748b] border-b border-[#1e2a3a] font-semibold" role="columnheader">
           Strike
+        </div>
+        <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-[#64748b] border-b border-[#1e2a3a] font-semibold hidden sm:block" role="columnheader">
+          Date
         </div>
         <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-[#64748b] border-b border-[#1e2a3a] font-semibold" role="columnheader">
           Status
