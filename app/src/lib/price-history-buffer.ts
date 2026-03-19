@@ -42,6 +42,16 @@ type HistoryListener = () => void;
 const listeners = new Map<string, Set<HistoryListener>>();
 
 /**
+ * Cached snapshots for useSyncExternalStore.
+ * getSnapshot must return the same reference if data hasn't changed,
+ * otherwise React triggers an infinite re-render loop.
+ */
+const snapshotCache = new Map<string, readonly PricePoint[]>();
+
+/** Empty frozen array returned when no data exists — stable reference. */
+const EMPTY_HISTORY: readonly PricePoint[] = Object.freeze([]);
+
+/**
  * Generate seed data points so charts aren't empty on first load.
  * Creates points going back in time from `now`, with tiny random walk
  * variation around the base price.
@@ -81,18 +91,26 @@ export function recordPrice(ticker: string, price: number, timestamp: number): v
 
   let buffer = historyBuffers.get(ticker);
 
-  // First price for this ticker — seed with synthetic history
+  // First price for this ticker — seed with synthetic history.
+  // The last seed point lands at `timestamp` with the real price,
+  // so we skip appending a duplicate real point afterward.
   if (!buffer) {
     const seedPoints = generateSeedPoints(price, timestamp);
     buffer = [...seedPoints];
     historyBuffers.set(ticker, buffer);
-  }
+  } else {
+    // Ensure strictly ascending timestamps (chart libraries require this)
+    const lastPoint = buffer[buffer.length - 1];
+    if (lastPoint && timestamp <= lastPoint.time) {
+      return;
+    }
 
-  // Append the new real price
-  buffer.push({
-    time: timestamp,
-    value: parseFloat(price.toFixed(2)),
-  });
+    // Append the new real price
+    buffer.push({
+      time: timestamp,
+      value: parseFloat(price.toFixed(2)),
+    });
+  }
 
   // Trim to max size (remove oldest)
   while (buffer.length > MAX_BUFFER_SIZE) {
@@ -100,6 +118,9 @@ export function recordPrice(ticker: string, price: number, timestamp: number): v
   }
 
   lastRecordedTime.set(ticker, timestamp);
+
+  // Invalidate the snapshot cache so getHistory returns a fresh copy
+  snapshotCache.set(ticker, [...buffer]);
 
   // Notify listeners
   const tickerListeners = listeners.get(ticker);
@@ -112,11 +133,19 @@ export function recordPrice(ticker: string, price: number, timestamp: number): v
 
 /**
  * Get the current price history for a ticker.
- * Returns a frozen copy to preserve immutability.
+ * Returns a cached snapshot — same reference until data changes —
+ * which is required by useSyncExternalStore to avoid infinite loops.
  */
 export function getHistory(ticker: string): readonly PricePoint[] {
+  const cached = snapshotCache.get(ticker);
+  if (cached) return cached;
+
   const buffer = historyBuffers.get(ticker);
-  return buffer ? [...buffer] : [];
+  if (!buffer) return EMPTY_HISTORY;
+
+  const snapshot = [...buffer] as readonly PricePoint[];
+  snapshotCache.set(ticker, snapshot);
+  return snapshot;
 }
 
 /**
