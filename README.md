@@ -73,9 +73,52 @@ meridian/
   tests/           Integration tests
 ```
 
-## Deploy & Run Full Lifecycle
+## Quick Start (Automated)
 
-Follow these steps to deploy Meridian from scratch and run the complete create → mint → settle → redeem lifecycle on Solana devnet.
+The setup script handles everything from dependency checks to on-chain initialization. It's modular and idempotent — safe to re-run at any point.
+
+```bash
+git clone <repo-url> meridian
+cd meridian
+./scripts/setup.sh
+```
+
+This runs all 7 steps in sequence: dependency checks → keypair generation → `.env` creation → `npm install` → `anchor build` → deploy to devnet → on-chain initialization.
+
+After setup completes, create a test USDC mint (you need this to fund wallets):
+
+```bash
+npx tsx scripts/mint-test-usdc.ts
+./scripts/setup.sh --env-only   # picks up the new mint address
+```
+
+Then start the frontend:
+
+```bash
+./scripts/setup.sh --frontend-only
+# or: cd app && npm run dev
+```
+
+### Running Individual Steps
+
+Each step can be run independently. Useful for re-running a failed step or setting up incrementally:
+
+```bash
+./scripts/setup.sh --deps-only      # Check required tools (node, solana, anchor, rust)
+./scripts/setup.sh --keys-only      # Generate admin + program keypairs, fund via airdrop
+./scripts/setup.sh --env-only       # Create .env from .env.example with detected values
+./scripts/setup.sh --install-only   # npm install (root + all workspaces)
+./scripts/setup.sh --build-only     # anchor build
+./scripts/setup.sh --deploy-only    # Deploy program to devnet
+./scripts/setup.sh --init-only      # Initialize config PDA + register tickers
+./scripts/setup.sh --frontend-only  # Start Next.js dev server
+```
+
+Flags can be combined: `./scripts/setup.sh --deps-only --env-only --install-only`
+
+## Manual Setup (Step by Step)
+
+If you prefer to run each step manually, or if the setup script doesn't suit your environment:
 
 ### Step 1: Prerequisites
 
@@ -86,7 +129,7 @@ Follow these steps to deploy Meridian from scratch and run the complete create �
 | Anchor CLI | v0.32.1 | `cargo install --git https://github.com/coral-xyz/anchor --tag v0.32.1 anchor-cli` |
 | Rust | latest stable | [rustup.rs](https://rustup.rs) |
 
-> **Windows users**: Run all commands inside WSL 2 (Ubuntu). The Solana CLI and Anchor do not support native Windows.
+> **Windows users**: Run all commands inside Git Bash or WSL 2 (Ubuntu).
 
 ### Step 2: Clone and Install
 
@@ -99,9 +142,9 @@ npm install
 ### Step 3: Generate a Keypair and Fund It
 
 ```bash
-solana-keygen new --outfile ~/.config/solana/meridian-admin.json
+solana-keygen new --outfile ~/.config/solana/id.json
 solana config set --url https://api.devnet.solana.com
-solana config set --keypair ~/.config/solana/meridian-admin.json
+solana config set --keypair ~/.config/solana/id.json
 
 # Airdrop SOL (run multiple times if needed, wait between requests)
 solana airdrop 5
@@ -110,7 +153,17 @@ solana airdrop 5
 
 You need at least 10 SOL for program deployment and market creation.
 
-### Step 4: Configure Environment
+### Step 4: Create Test USDC Mint
+
+Each deployment needs its own USDC mint on devnet (you must control the mint authority to fund test wallets):
+
+```bash
+npx tsx scripts/mint-test-usdc.ts
+```
+
+This creates a mint, saves its address to `.test-usdc-mint.json`, and mints 100 USDC to your wallet.
+
+### Step 5: Configure Environment
 
 ```bash
 cp .env.example .env
@@ -121,12 +174,14 @@ Edit `.env` and set:
 | Variable | Value |
 |----------|-------|
 | `SOLANA_RPC_URL` | `https://api.devnet.solana.com` (default) |
-| `ADMIN_KEYPAIR_PATH` | `~/.config/solana/meridian-admin.json` |
+| `ADMIN_KEYPAIR_PATH` | Path to your keypair from Step 3 |
+| `PROGRAM_ID` | Will be set after deploy (Step 6) |
+| `NEXT_PUBLIC_USDC_MINT` | Address from `.test-usdc-mint.json` (Step 4) |
 | `FINNHUB_API_KEY` | Free key from [finnhub.io/register](https://finnhub.io/register) |
 
 All other variables have sensible defaults. See `.env.example` for the full list.
 
-### Step 5: Deploy
+### Step 6: Deploy
 
 ```bash
 ./scripts/deploy.sh
@@ -139,9 +194,11 @@ This script:
 4. Registers all 7 tickers with Pyth feed IDs
 5. Uploads the IDL
 
+After deploy, update `PROGRAM_ID`, `MERIDIAN_PROGRAM_ID`, and `NEXT_PUBLIC_MERIDIAN_PROGRAM_ID` in `.env` with the deployed address.
+
 Use `./scripts/deploy.sh --test` to deploy and run the lifecycle test in one step.
 
-### Step 6: Run the Full Lifecycle Test
+### Step 7: Run the Full Lifecycle Test
 
 ```bash
 npx tsx scripts/test-full-pipeline.ts
@@ -161,7 +218,7 @@ This exercises the complete on-chain flow:
 
 Steps 1–5 confirm immediately. Step 6 requires the settlement window to elapse (market close + 1 hour). The script reports the wait and exits cleanly.
 
-### Step 7: Start the Frontend
+### Step 8: Start the Frontend
 
 ```bash
 cd app
@@ -174,11 +231,13 @@ Open [http://localhost:3002](http://localhost:3002). Connect a Solana wallet (Ph
 
 | Problem | Solution |
 |---------|----------|
+| `./scripts/setup.sh` shows missing deps | Install the tools listed and re-run `--deps-only` |
 | `solana airdrop` fails | Wait 30s and retry. Devnet faucet is rate-limited. |
 | Deploy fails with "insufficient funds" | Airdrop more SOL: `solana airdrop 5` |
 | `test-full-pipeline.ts` times out | Public devnet RPC can be slow. Use a dedicated RPC (Helius, QuickNode). |
-| Frontend shows no markets | Run the lifecycle test first to create markets on-chain. |
+| Frontend shows no markets | Run the morning job or lifecycle test to create markets on-chain. |
 | Wallet won't connect | Ensure wallet is set to **devnet**, not mainnet. |
+| USDC balance is 0 | Run `npx tsx scripts/mint-test-usdc.ts` to mint test USDC. |
 
 ## Technology Choices & Justifications
 
